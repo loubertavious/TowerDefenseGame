@@ -381,10 +381,14 @@ class TowerDefenseGame {
             // Easier early waves
             baseEnemies = 3;
             additionalEnemies = Math.floor((this.gameState.wave - 1) * 0.5); // Very gentle scaling
-        } else {
-            // Normal scaling for later waves
+        } else if (this.gameState.wave <= 8) {
+            // Moderate scaling starting from wave 4
             baseEnemies = 5;
-            additionalEnemies = Math.floor(this.gameState.wave * 1.0);
+            additionalEnemies = Math.floor((this.gameState.wave - 3) * 2.0); // Faster scaling
+        } else {
+            // Aggressive scaling for late game
+            baseEnemies = 8;
+            additionalEnemies = Math.floor((this.gameState.wave - 8) * 3.0) + 15; // Much faster scaling
         }
         
         this.gameState.enemiesLeft = baseEnemies + additionalEnemies;
@@ -840,7 +844,7 @@ class TowerDefenseGame {
     waveComplete() {
         this.gameState.gameRunning = false;
         this.gameState.wave++;
-        this.gameState.money += 300; // Wave completion bonus
+        this.gameState.money += 150; // Reduced wave completion bonus for more challenging economy
         document.getElementById('start-wave').disabled = false;
         this.updateUI(); // Update UI when wave and money change
         
@@ -1277,29 +1281,40 @@ class Enemy {
         this.base = base;
         this.wave = wave;
         
-        // Scale stats based on wave - gentle early, brutal after wave 10
+        // Scale stats based on wave - gentle early, aggressive after wave 4
         let waveMultiplier, healthMultiplier;
         
-        if (wave <= 10) {
+        if (wave <= 4) {
             // Gentle scaling for early waves
             waveMultiplier = 1 + (wave - 1) * 0.08; // 8% increase per wave
             healthMultiplier = 1 + (wave - 1) * 0.1; // 10% health increase per wave
-        } else {
-            // Aggressive scaling after wave 10
-            const earlyWaveBonus = 1 + 9 * 0.08; // Bonus from waves 1-10
-            const lateWaveBonus = (wave - 10) * 0.25; // 25% increase per wave after 10
-            waveMultiplier = earlyWaveBonus + lateWaveBonus;
+        } else if (wave <= 10) {
+            // Aggressive scaling starting from wave 5
+            const earlyWaveBonus = 1 + 3 * 0.08; // Bonus from waves 1-4
+            const midWaveBonus = (wave - 4) * 0.2; // 20% increase per wave starting wave 5
+            waveMultiplier = earlyWaveBonus + midWaveBonus;
             
-            const earlyHealthBonus = 1 + 9 * 0.1; // Health bonus from waves 1-10
-            const lateHealthBonus = (wave - 10) * 0.3; // 30% health increase per wave after 10
-            healthMultiplier = earlyHealthBonus + lateHealthBonus;
+            const earlyHealthBonus = 1 + 3 * 0.1; // Health bonus from waves 1-4
+            const midHealthBonus = (wave - 4) * 0.25; // 25% health increase per wave starting wave 5
+            healthMultiplier = earlyHealthBonus + midHealthBonus;
+        } else {
+            // Brutal scaling after wave 10
+            const earlyWaveBonus = 1 + 3 * 0.08; // Bonus from waves 1-4
+            const midWaveBonus = 6 * 0.2; // Bonus from waves 5-10
+            const lateWaveBonus = (wave - 10) * 0.35; // 35% increase per wave after 10
+            waveMultiplier = earlyWaveBonus + midWaveBonus + lateWaveBonus;
+            
+            const earlyHealthBonus = 1 + 3 * 0.1; // Health bonus from waves 1-4
+            const midHealthBonus = 6 * 0.25; // Health bonus from waves 5-10
+            const lateHealthBonus = (wave - 10) * 0.45; // 45% health increase per wave after 10
+            healthMultiplier = earlyHealthBonus + midHealthBonus + lateHealthBonus;
         }
         
         this.speed = 0.8 * waveMultiplier; // Lower base speed
         this.health = Math.floor(30 * healthMultiplier); // Reduced base health for easier early waves
         this.maxHealth = this.health;
         this.damage = Math.floor(8 * waveMultiplier); // Reduced base damage for less punishing hits
-        this.reward = Math.floor(12 * waveMultiplier); // Lower base reward
+        this.reward = Math.floor(6 * waveMultiplier); // Reduced base reward for more challenging economy
         this.reachedBase = false;
         this.type = this.getRandomDemonType();
         
