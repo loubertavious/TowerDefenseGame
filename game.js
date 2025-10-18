@@ -43,9 +43,9 @@ class TowerDefenseGame {
         
         // Tower base stats - Evil Eye
         this.towerStats = {
-            damage: 25,
+            damage: 35,
             range: 200,
-            fireRate: 1200,
+            fireRate: 800,
             bulletSpeed: 5,
             color: '#8B0000', // Dark red
             size: 15
@@ -64,13 +64,13 @@ class TowerDefenseGame {
             range: {
                 name: "Vision",
                 upgrades: [
-                    { cost: 75, effect: 12, description: "+12 Vision Range" },
-                    { cost: 150, effect: 15, description: "+15 Vision Range" },
-                    { cost: 300, effect: 18, description: "+18 Vision Range" },
-                    { cost: 600, effect: 22, description: "+22 Vision Range" },
-                    { cost: 1200, effect: 28, description: "+28 Vision Range" },
-                    { cost: 2400, effect: 35, description: "+35 Vision Range" },
-                    { cost: 4800, effect: 45, description: "+45 Vision Range" },
+                    { cost: 75, effect: 20, description: "+20 Vision Range" },
+                    { cost: 150, effect: 25, description: "+25 Vision Range" },
+                    { cost: 300, effect: 30, description: "+30 Vision Range" },
+                    { cost: 600, effect: 35, description: "+35 Vision Range" },
+                    { cost: 1200, effect: 40, description: "+40 Vision Range" },
+                    { cost: 2400, effect: 45, description: "+45 Vision Range" },
+                    { cost: 4800, effect: 50, description: "+50 Vision Range" },
                     { cost: 9600, effect: 60, description: "+60 Vision Range" },
                     { cost: 19200, effect: 80, description: "+80 Vision Range" },
                     { cost: 38400, effect: 110, description: "+110 Vision Range" }
@@ -375,8 +375,18 @@ class TowerDefenseGame {
         
         this.gameState.gameRunning = true;
         // Scale enemy count based on wave (more enemies each wave)
-        const baseEnemies = 5;
-        const additionalEnemies = Math.floor(this.gameState.wave * 1.0); // gentler spawn scaling
+        let baseEnemies, additionalEnemies;
+        
+        if (this.gameState.wave <= 3) {
+            // Easier early waves
+            baseEnemies = 3;
+            additionalEnemies = Math.floor((this.gameState.wave - 1) * 0.5); // Very gentle scaling
+        } else {
+            // Normal scaling for later waves
+            baseEnemies = 5;
+            additionalEnemies = Math.floor(this.gameState.wave * 1.0);
+        }
+        
         this.gameState.enemiesLeft = baseEnemies + additionalEnemies;
         
         console.log(`Wave ${this.gameState.wave}: Spawning ${this.gameState.enemiesLeft} enemies`);
@@ -499,19 +509,37 @@ class TowerDefenseGame {
                 button.disabled = this.gameState.money < upgradeCost;
             } else if (currentLevel < categoryData.upgrades.length) {
                 const upgrade = categoryData.upgrades[currentLevel];
-                const levelText = currentLevel > 0 ? ` (Lv.${currentLevel + 1})` : '';
+                
+                // Special handling for multishot naming
+                let displayName = categoryData.name;
+                if (category === 'multishot') {
+                    const eyeNames = ['Binocular', 'Trinocular', 'Quadnocular', 'Pentnocular', 'Hexnocular'];
+                    displayName = eyeNames[currentLevel] || `${categoryData.name} (Lv.${currentLevel + 1})`;
+                } else {
+                    const levelText = currentLevel > 0 ? ` (Lv.${currentLevel + 1})` : '';
+                    displayName = `${categoryData.name}${levelText}`;
+                }
+                
                 button.innerHTML = `
                     <div class="upgrade-button-content">
-                        <div class="upgrade-name">${categoryData.name}${levelText}</div>
+                        <div class="upgrade-name">${displayName}</div>
                         <div class="upgrade-price">$${upgrade.cost}</div>
                     </div>
                 `;
                 button.setAttribute('data-tooltip', `${upgrade.description} - Cost: $${upgrade.cost}`);
                 button.disabled = this.gameState.money < upgrade.cost;
             } else {
+                // Special handling for multishot MAX naming
+                let maxDisplayName = categoryData.name;
+                if (category === 'multishot') {
+                    maxDisplayName = 'Hexnocular (MAX)';
+                } else {
+                    maxDisplayName = `${categoryData.name} (MAX)`;
+                }
+                
                 button.innerHTML = `
                     <div class="upgrade-button-content">
-                        <div class="upgrade-name">${categoryData.name} (MAX)</div>
+                        <div class="upgrade-name">${maxDisplayName}</div>
                         <div class="upgrade-price">MAX</div>
                     </div>
                 `;
@@ -847,9 +875,9 @@ class TowerDefenseGame {
         
         // Reset tower stats and upgrades
         this.towerStats = {
-            damage: 25,
+            damage: 35,
             range: 100,
-            fireRate: 1200,
+            fireRate: 800,
             bulletSpeed: 5,
             color: '#8B0000',
             size: 20
@@ -903,7 +931,10 @@ class Tower {
     }
     
     updateStats(newStats) {
-        this.data = newStats;
+        // Preserve the original size to prevent tower from growing
+        const originalSize = this.data.size;
+        this.data = {...newStats};
+        this.data.size = originalSize;
     }
     
     updateSatelliteEyes(multishotLevel) {
@@ -1265,9 +1296,9 @@ class Enemy {
         }
         
         this.speed = 0.8 * waveMultiplier; // Lower base speed
-        this.health = Math.floor(50 * healthMultiplier); // Lower base health
+        this.health = Math.floor(30 * healthMultiplier); // Reduced base health for easier early waves
         this.maxHealth = this.health;
-        this.damage = Math.floor(12 * waveMultiplier); // Lower base damage
+        this.damage = Math.floor(8 * waveMultiplier); // Reduced base damage for less punishing hits
         this.reward = Math.floor(12 * waveMultiplier); // Lower base reward
         this.reachedBase = false;
         this.type = this.getRandomDemonType();
