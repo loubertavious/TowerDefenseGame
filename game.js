@@ -17,6 +17,12 @@ class TowerDefenseGame {
         
         // Dev menu state
         this.devMenuOpen = false;
+        this.autoStartRounds = false;
+        this.waveOverPopup = {
+            show: false,
+            timer: 0,
+            duration: 2000 // 2 seconds
+        };
         
         // Game objects
         this.tower = null; // Single tower
@@ -51,9 +57,9 @@ class TowerDefenseGame {
                 name: "Hellfire",
                 infinite: true,
                 baseCost: 75,
-                baseEffect: 10,
-                costMultiplier: 1.5,
-                effectMultiplier: 1.2
+                baseEffect: 8,
+                costMultiplier: 1.6,
+                effectMultiplier: 1.1
             },
             range: {
                 name: "Vision",
@@ -62,24 +68,29 @@ class TowerDefenseGame {
                     { cost: 150, effect: 15, description: "+15 Vision Range" },
                     { cost: 300, effect: 18, description: "+18 Vision Range" },
                     { cost: 600, effect: 22, description: "+22 Vision Range" },
-                    { cost: 1200, effect: 28, description: "+28 Vision Range" }
+                    { cost: 1200, effect: 28, description: "+28 Vision Range" },
+                    { cost: 2400, effect: 35, description: "+35 Vision Range" },
+                    { cost: 4800, effect: 45, description: "+45 Vision Range" },
+                    { cost: 9600, effect: 60, description: "+60 Vision Range" },
+                    { cost: 19200, effect: 80, description: "+80 Vision Range" },
+                    { cost: 38400, effect: 110, description: "+110 Vision Range" }
                 ]
             },
             fireRate: {
                 name: "Fury",
                 infinite: true,
                 baseCost: 75,
-                baseEffect: -75,
-                costMultiplier: 1.5,
-                effectMultiplier: 1.3
+                baseEffect: -50,
+                costMultiplier: 1.6,
+                effectMultiplier: 1.2
             },
             bulletSpeed: {
                 name: "Velocity",
                 infinite: true,
                 baseCost: 100,
                 baseEffect: 1,
-                costMultiplier: 1.6,
-                effectMultiplier: 1.1
+                costMultiplier: 1.7,
+                effectMultiplier: 1.05
             },
             multishot: {
                 name: "Multishot",
@@ -159,10 +170,24 @@ class TowerDefenseGame {
             });
         }
         
+        // Auto-start checkbox listener
+        const autoStartCheckbox = document.getElementById('auto-start');
+        if (autoStartCheckbox) {
+            autoStartCheckbox.addEventListener('change', (e) => {
+                this.autoStartRounds = e.target.checked;
+            });
+        }
+        
         // Dev menu keyboard listener
         document.addEventListener('keydown', (e) => {
             if (e.key === '`' || e.key === '~' || e.code === 'Backquote') {
                 this.toggleDevMenu();
+            }
+            
+            // Spacebar to start wave (only when not in dev menu)
+            if (e.key === ' ' && !this.devMenuOpen) {
+                e.preventDefault(); // Prevent page scroll
+                this.startWave();
             }
             
             // Dev menu commands (only when dev menu is open)
@@ -411,10 +436,13 @@ class TowerDefenseGame {
     }
     
     updateUI() {
-        document.getElementById('health').textContent = this.gameState.health;
         document.getElementById('money').textContent = '$' + this.gameState.money;
-        document.getElementById('wave').textContent = this.gameState.wave;
-        document.getElementById('enemies-left').textContent = this.gameState.enemiesLeft;
+        
+        // Update start wave button text with wave number
+        const startWaveBtn = document.getElementById('start-wave');
+        if (startWaveBtn) {
+            startWaveBtn.textContent = `Start Wave ${this.gameState.wave}`;
+        }
         
         // Update heal button state
         const healBtn = document.getElementById('heal-base');
@@ -502,6 +530,14 @@ class TowerDefenseGame {
     }
     
     update() {
+        // Update wave over popup timer
+        if (this.waveOverPopup.show) {
+            this.waveOverPopup.timer += 16; // Approximate frame time (60fps)
+            if (this.waveOverPopup.timer >= this.waveOverPopup.duration) {
+                this.waveOverPopup.show = false;
+            }
+        }
+        
         // Update enemies
         this.enemies.forEach((enemy, index) => {
             enemy.update();
@@ -586,12 +622,16 @@ class TowerDefenseGame {
         // Draw particles
         this.particles.forEach(particle => particle.render(this.ctx));
         
-        
         // Draw game over overlay
         if (this.gameState.health <= 0) {
             this.drawGameOverOverlay();
             // Ensure game is stopped
             this.gameState.gameRunning = false;
+        }
+        
+        // Draw wave over popup
+        if (this.waveOverPopup.show) {
+            this.drawWaveOverPopup();
         }
         
         // Draw dev menu
@@ -681,12 +721,27 @@ class TowerDefenseGame {
         this.ctx.fillStyle = '#FFD700';
         this.ctx.font = 'bold 32px Arial';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('DEV MENU', this.canvas.width / 2, 100);
+        this.ctx.fillText('DEV MENU', this.canvas.width / 2, 80);
+        
+        // Game Stats section
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = 'bold 20px Arial';
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText('GAME STATS:', 50, 120);
+        
+        // Stats display
+        this.ctx.font = '18px Arial';
+        this.ctx.fillStyle = '#FF69B4';
+        this.ctx.fillText(`Health: ${this.gameState.health}`, 70, 145);
+        this.ctx.fillText(`Wave: ${this.gameState.wave}`, 70, 165);
+        this.ctx.fillText(`Enemies Left: ${this.gameState.enemiesLeft}`, 70, 185);
+        this.ctx.fillText(`Money: $${this.gameState.money}`, 70, 205);
         
         // Instructions
         this.ctx.fillStyle = '#FFFFFF';
         this.ctx.font = '18px Arial';
-        this.ctx.fillText('Press ~ to close', this.canvas.width / 2, 130);
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('Press ~ to close', this.canvas.width / 2, 240);
         
         // Dev commands
         const commands = [
@@ -703,8 +758,53 @@ class TowerDefenseGame {
         
         commands.forEach((command, index) => {
             this.ctx.fillStyle = '#FF69B4';
-            this.ctx.fillText(command, 50, 200 + index * 30);
+            this.ctx.fillText(command, 50, 280 + index * 30);
         });
+        
+        this.ctx.restore();
+    }
+    
+    drawWaveOverPopup() {
+        this.ctx.save();
+        
+        // Calculate fade effect based on timer
+        const fadeInTime = 300; // 300ms fade in
+        const fadeOutTime = 500; // 500ms fade out
+        const holdTime = this.waveOverPopup.duration - fadeInTime - fadeOutTime;
+        
+        let alpha = 1;
+        if (this.waveOverPopup.timer < fadeInTime) {
+            // Fade in
+            alpha = this.waveOverPopup.timer / fadeInTime;
+        } else if (this.waveOverPopup.timer > fadeInTime + holdTime) {
+            // Fade out
+            alpha = 1 - ((this.waveOverPopup.timer - fadeInTime - holdTime) / fadeOutTime);
+        }
+        
+        this.ctx.globalAlpha = alpha;
+        
+        // Draw semi-transparent background
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Draw "WAVE OVER" text
+        this.ctx.fillStyle = '#FFD700';
+        this.ctx.font = 'bold 64px Cinzel, serif';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        
+        // Text shadow for depth
+        this.ctx.shadowColor = '#8B0000';
+        this.ctx.shadowBlur = 20;
+        this.ctx.shadowOffsetX = 4;
+        this.ctx.shadowOffsetY = 4;
+        
+        this.ctx.fillText('WAVE OVER', this.canvas.width / 2, this.canvas.height / 2);
+        
+        // Draw wave number below
+        this.ctx.font = 'bold 32px Cinzel, serif';
+        this.ctx.fillStyle = '#DC143C';
+        this.ctx.fillText(`Wave ${this.gameState.wave - 1} Complete`, this.canvas.width / 2, this.canvas.height / 2 + 60);
         
         this.ctx.restore();
     }
@@ -715,6 +815,17 @@ class TowerDefenseGame {
         this.gameState.money += 300; // Wave completion bonus
         document.getElementById('start-wave').disabled = false;
         this.updateUI(); // Update UI when wave and money change
+        
+        // Show wave over popup
+        this.waveOverPopup.show = true;
+        this.waveOverPopup.timer = 0;
+        
+        // Auto-start next wave if enabled
+        if (this.autoStartRounds) {
+            setTimeout(() => {
+                this.startWave();
+            }, 1000); // 1 second delay before auto-starting
+        }
     }
     
     createExplosionParticles(x, y) {
@@ -833,15 +944,21 @@ class Tower {
             // Shortest angular difference in [-PI, PI]
             let delta = desired - this.rotation;
             delta = ((delta + Math.PI) % (Math.PI * 2)) - Math.PI;
+            
+            // Check if we're close enough to target to start firing (within 30 degrees)
+            const angleDifference = Math.abs(delta);
+            const canFire = angleDifference < Math.PI / 6; // 30 degrees
+            
             // Clamp rotation step for smooth turning
             if (delta > this.turnSpeed) delta = this.turnSpeed;
             if (delta < -this.turnSpeed) delta = -this.turnSpeed;
             this.rotation += delta;
-        }
-        
-        if (this.target && Date.now() - this.lastFireTime >= this.data.fireRate) {
-            this.shouldFire = true;
-            this.lastFireTime = Date.now();
+            
+            // Fire if close enough to target and cooldown is ready
+            if (canFire && Date.now() - this.lastFireTime >= this.data.fireRate) {
+                this.shouldFire = true;
+                this.lastFireTime = Date.now();
+            }
         }
         
         // Update satellite eyes
@@ -870,7 +987,19 @@ class Tower {
         
         // Main tower projectile
         if (this.target && this.shouldFire) {
-            projectiles.push(new Projectile(this.x, this.y, this.target, this.data.damage, this.data.bulletSpeed));
+            // Calculate accuracy based on how well aimed we are
+            const dx = this.target.x - this.x;
+            const dy = this.target.y - this.y;
+            const desired = Math.atan2(dy, dx);
+            let delta = desired - this.rotation;
+            delta = ((delta + Math.PI) % (Math.PI * 2)) - Math.PI;
+            const angleDifference = Math.abs(delta);
+            
+            // Accuracy decreases as angle difference increases
+            // Perfect aim (0 degrees) = 1.0 accuracy, 30 degrees = 0.5 accuracy, 60+ degrees = 0.1 accuracy
+            const accuracy = Math.max(0.1, 1.0 - (angleDifference / (Math.PI / 3)));
+            
+            projectiles.push(new Projectile(this.x, this.y, this.target, this.data.damage, this.data.bulletSpeed, accuracy));
         }
         
         // Satellite eye projectiles (always check, independent timing)
@@ -1033,14 +1162,20 @@ class SmallEye {
             const desired = Math.atan2(dy, dx);
             let delta = desired - this.rotation;
             delta = ((delta + Math.PI) % (Math.PI * 2)) - Math.PI;
+            
+            // Check if we're close enough to target to start firing (within 30 degrees)
+            const angleDifference = Math.abs(delta);
+            const canFire = angleDifference < Math.PI / 6; // 30 degrees
+            
             if (delta > this.turnSpeed) delta = this.turnSpeed;
             if (delta < -this.turnSpeed) delta = -this.turnSpeed;
             this.rotation += delta;
-        }
-        
-        if (this.target && Date.now() - this.lastFireTime >= this.towerData.fireRate) {
-            this.shouldFire = true;
-            this.lastFireTime = Date.now();
+            
+            // Fire if close enough to target and cooldown is ready
+            if (canFire && Date.now() - this.lastFireTime >= this.towerData.fireRate) {
+                this.shouldFire = true;
+                this.lastFireTime = Date.now();
+            }
         }
     }
     
@@ -1061,7 +1196,18 @@ class SmallEye {
     
     fire() {
         if (this.target) {
-            return new SmallProjectile(this.x, this.y, this.target, this.towerData.damage * 0.5, this.towerData.bulletSpeed);
+            // Calculate accuracy based on how well aimed we are
+            const dx = this.target.x - this.x;
+            const dy = this.target.y - this.y;
+            const desired = Math.atan2(dy, dx);
+            let delta = desired - this.rotation;
+            delta = ((delta + Math.PI) % (Math.PI * 2)) - Math.PI;
+            const angleDifference = Math.abs(delta);
+            
+            // Accuracy decreases as angle difference increases
+            const accuracy = Math.max(0.1, 1.0 - (angleDifference / (Math.PI / 3)));
+            
+            return new SmallProjectile(this.x, this.y, this.target, this.towerData.damage * 0.5, this.towerData.bulletSpeed, accuracy);
         }
         return null;
     }
@@ -1293,20 +1439,27 @@ class Enemy {
 
 // Projectile class
 class Projectile {
-    constructor(x, y, target, damage, speed = 5) {
+    constructor(x, y, target, damage, speed = 5, accuracy = 1.0) {
         this.x = x;
         this.y = y;
         this.target = target;
         this.damage = damage;
         this.speed = speed;
+        this.accuracy = accuracy; // 1.0 = perfect accuracy, 0.0 = completely random
         this.shouldRemove = false;
         
-        // Calculate direction
+        // Calculate direction with accuracy-based randomness
         const dx = target.x - x;
         const dy = target.y - y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        this.vx = (dx / distance) * this.speed;
-        this.vy = (dy / distance) * this.speed;
+        
+        // Add accuracy-based randomness to the direction
+        const baseAngle = Math.atan2(dy, dx);
+        const accuracySpread = (1 - accuracy) * Math.PI / 4; // Max 45 degrees spread at 0 accuracy
+        const randomAngle = baseAngle + (Math.random() - 0.5) * accuracySpread;
+        
+        this.vx = Math.cos(randomAngle) * this.speed;
+        this.vy = Math.sin(randomAngle) * this.speed;
     }
     
     update() {
@@ -1354,20 +1507,27 @@ class Projectile {
 
 // SmallProjectile class for satellite eye bullets
 class SmallProjectile {
-    constructor(x, y, target, damage, speed = 5) {
+    constructor(x, y, target, damage, speed = 5, accuracy = 1.0) {
         this.x = x;
         this.y = y;
         this.target = target;
         this.damage = damage;
         this.speed = speed;
+        this.accuracy = accuracy;
         this.shouldRemove = false;
         
-        // Calculate direction
+        // Calculate direction with accuracy-based randomness
         const dx = target.x - x;
         const dy = target.y - y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        this.vx = (dx / distance) * this.speed;
-        this.vy = (dy / distance) * this.speed;
+        
+        // Add accuracy-based randomness to the direction
+        const baseAngle = Math.atan2(dy, dx);
+        const accuracySpread = (1 - accuracy) * Math.PI / 4; // Max 45 degrees spread at 0 accuracy
+        const randomAngle = baseAngle + (Math.random() - 0.5) * accuracySpread;
+        
+        this.vx = Math.cos(randomAngle) * this.speed;
+        this.vy = Math.sin(randomAngle) * this.speed;
     }
     
     update() {

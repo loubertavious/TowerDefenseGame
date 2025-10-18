@@ -8,28 +8,16 @@
 </head>
 <body>
     <div class="game-container">
-        <!-- Left Panel - Stats and Controls -->
+        <!-- Left Panel - Controls -->
         <div class="left-panel">
-            <div class="stats">
-                <h3>Game Stats</h3>
-                <div class="stat">
-                    <span class="label">Health:</span>
-                    <span id="health">100</span>
-                </div>
-                <div class="stat">
-                    <span class="label">Wave:</span>
-                    <span id="wave">1</span>
-                </div>
-                <div class="stat">
-                    <span class="label">Enemies:</span>
-                    <span id="enemies-left">0</span>
-                </div>
-            </div>
-            
             <div class="controls">
                 <h3>Game Controls</h3>
                 <button id="start-wave">Start Wave</button>
                 <button id="pause-game">Pause</button>
+                <div class="checkbox-container">
+                    <input type="checkbox" id="auto-start" />
+                    <label for="auto-start">Auto Start Rounds</label>
+                </div>
             </div>
         </div>
         
