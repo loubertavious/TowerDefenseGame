@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tower Defense Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <!-- Left Panel - Stats and Controls -->
+        <div class="left-panel">
+            <div class="stats">
+                <h3>Game Stats</h3>
+                <div class="stat">
+                    <span class="label">Health:</span>
+                    <span id="health">100</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Wave:</span>
+                    <span id="wave">1</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Enemies:</span>
+                    <span id="enemies-left">0</span>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <h3>Game Controls</h3>
+                <button id="start-wave">Start Wave</button>
+                <button id="pause-game">Pause</button>
+            </div>
+        </div>
+        
+        <!-- Center - Game Canvas -->
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <!-- Right Panel - Upgrades and Shop -->
+        <div class="right-panel">
+            <div class="money-display">
+                <div class="stat">
+                    <span class="label">Money:</span>
+                    <span id="money">$500</span>
+                </div>
+            </div>
+            
+            <div class="tower-selection">
+                <h3>Tower Shop</h3>
+                
+                <!-- Basic Upgrades -->
+                <div class="upgrade-categories">
+                    <button id="upgrade-damage" class="upgrade-category" data-category="damage">
+                        <div class="upgrade-button-content">
+                            <div class="upgrade-name">Hellfire</div>
+                            <div class="upgrade-price">$75</div>
+                        </div>
+                    </button>
+                    <button id="upgrade-range" class="upgrade-category" data-category="range">
+                        <div class="upgrade-button-content">
+                            <div class="upgrade-name">Vision</div>
+                            <div class="upgrade-price">$75</div>
+                        </div>
+                    </button>
+                    <button id="upgrade-fireRate" class="upgrade-category" data-category="fireRate">
+                        <div class="upgrade-button-content">
+                            <div class="upgrade-name">Fury</div>
+                            <div class="upgrade-price">$75</div>
+                        </div>
+                    </button>
+                    <button id="upgrade-bulletSpeed" class="upgrade-category" data-category="bulletSpeed">
+                        <div class="upgrade-button-content">
+                            <div class="upgrade-name">Velocity</div>
+                            <div class="upgrade-price">$100</div>
+                        </div>
+                    </button>
+                    <button id="upgrade-multishot" class="upgrade-category" data-category="multishot">
+                        <div class="upgrade-button-content">
+                            <div class="upgrade-name">Multishot</div>
+                            <div class="upgrade-price">$500</div>
+                        </div>
+                    </button>
+                </div>
+                
+                <!-- Heal System -->
+                <div class="heal-section">
+                    <button id="heal-base">Heal Base ($50)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="game.js"></script>
+</body>
+</html>
