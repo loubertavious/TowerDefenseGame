@@ -9,6 +9,7 @@ class TowerDefenseGame {
             enemiesLeft: 0,
             gameRunning: false,
             paused: false,
+            isGameOver: false,
             selectedTower: null,
             placingTower: false,
             mouseX: 0,
@@ -596,7 +597,7 @@ class TowerDefenseGame {
     }
     
     gameLoop() {
-        if (!this.gameState.paused) {
+        if (!this.gameState.paused && !this.gameState.isGameOver) {
             this.update();
         }
         this.render();
@@ -734,7 +735,7 @@ class TowerDefenseGame {
         this.particles.forEach(particle => particle.render(this.ctx));
         
         // Draw game over overlay
-        if (this.gameState.health <= 0) {
+        if (this.gameState.isGameOver || this.gameState.health <= 0) {
             this.drawGameOverOverlay();
             // Ensure game is stopped
             this.gameState.gameRunning = false;
@@ -1084,23 +1085,37 @@ class TowerDefenseGame {
         console.log('Game Over! Final health:', this.gameState.health);
         this.gameState.gameRunning = false;
         this.gameState.health = 0; // Ensure health is exactly 0
-        alert('Game Over! You survived ' + (this.gameState.wave - 1) + ' waves!');
+        this.gameState.isGameOver = true;
         
-        // Reset game
+        // Enable click-to-restart
+        const handleRestart = () => {
+            document.removeEventListener('click', handleRestart);
+            this.resetGame();
+        };
+        setTimeout(() => {
+            document.addEventListener('click', handleRestart);
+        }, 200); // small delay to avoid accidental immediate restart
+    }
+
+    resetGame() {
+        // Reset game state
+        this.gameState.isGameOver = false;
+        this.gameState.gameRunning = false;
         this.gameState.health = 100;
         this.gameState.money = 500;
         this.gameState.wave = 1;
+        this.gameState.enemiesLeft = 0;
         
         // Reset tower stats and upgrades
         this.towerStats = {
             damage: 35,
-            range: 100,
+            range: 200,
             fireRate: 800,
             bulletSpeed: 5,
             knockback: 0,
             bulletSize: 1,
             color: '#8B0000',
-            size: 20
+            size: 15
         };
         
         this.upgradeLevels = {
@@ -1117,8 +1132,11 @@ class TowerDefenseGame {
         this.enemies = [];
         this.projectiles = [];
         this.particles = [];
-        this.moneyPopups = []; // Clear money popups on reset
-        document.getElementById('start-wave').disabled = false;
+        this.moneyPopups = [];
+        
+        const startBtn = document.getElementById('start-wave');
+        if (startBtn) startBtn.disabled = false;
+        this.updateUI();
     }
 }
 
@@ -1253,7 +1271,12 @@ class Tower {
             // Perfect aim (0 degrees) = 1.0 accuracy, 30 degrees = 0.5 accuracy, 60+ degrees = 0.1 accuracy
             const accuracy = Math.max(0.1, 1.0 - (angleDifference / (Math.PI / 3)));
             
-            projectiles.push(new Projectile(this.x, this.y, this.target, this.data.damage, this.data.bulletSpeed, accuracy, this.data));
+            // Calculate firing position from the edge of the tower in the direction it's facing
+            const firingRadius = this.data.size + 5; // Fire from slightly outside the tower
+            const firingX = this.x + Math.cos(this.rotation) * firingRadius;
+            const firingY = this.y + Math.sin(this.rotation) * firingRadius;
+            
+            projectiles.push(new Projectile(firingX, firingY, this.target, this.data.damage, this.data.bulletSpeed, accuracy, this.data));
         }
         
         // Satellite eye projectiles (always check, independent timing)
@@ -1461,7 +1484,12 @@ class SmallEye {
             // Accuracy decreases as angle difference increases
             const accuracy = Math.max(0.1, 1.0 - (angleDifference / (Math.PI / 3)));
             
-            return new SmallProjectile(this.x, this.y, this.target, this.towerData.damage * 0.5, this.towerData.bulletSpeed, accuracy, this.towerData);
+            // Calculate firing position from the edge of the satellite eye in the direction it's facing
+            const firingRadius = this.towerData.size * 0.6 + 3; // Fire from slightly outside the satellite eye
+            const firingX = this.x + Math.cos(this.rotation) * firingRadius;
+            const firingY = this.y + Math.sin(this.rotation) * firingRadius;
+            
+            return new SmallProjectile(firingX, firingY, this.target, this.towerData.damage * 0.5, this.towerData.bulletSpeed, accuracy, this.towerData);
         }
         return null;
     }
@@ -1536,18 +1564,47 @@ class Enemy {
         this.reward = Math.floor(6 * waveMultiplier); // Reduced base reward for more challenging economy
         this.reachedBase = false;
         this.type = this.getRandomDemonType();
+        this.movementType = this.getRandomMovementType();
+        
+        // Movement-specific properties
+        this.orbitAngle = 0; // For gravitational orbit
+        this.orbitRadius = 0; // For gravitational orbit
+        this.orbitalVelocity = 0; // Tangential velocity for orbit
+        this.energyLoss = 0.001; // Energy loss per frame (orbital decay)
+        this.zigzagDirection = 1; // For zigzag movement
+        this.zigzagTimer = 0; // For zigzag movement
+        this.zigzagFrequency = 0.05; // How often to change zigzag direction
         
         // Knockback system
         this.knockbackX = 0;
         this.knockbackY = 0;
         this.knockbackDecay = 0.85; // How quickly knockback fades
         
-        console.log(`Wave ${wave} Enemy: Health=${this.health}, Damage=${this.damage}, Speed=${this.speed.toFixed(2)}, Reward=${this.reward}`);
+        console.log(`Wave ${wave} Enemy: Health=${this.health}, Damage=${this.damage}, Speed=${this.speed.toFixed(2)}, Reward=${this.reward}, Movement=${this.movementType}`);
     }
     
     getRandomDemonType() {
         const types = ['imp', 'cacodemon', 'pinky'];
         return types[Math.floor(Math.random() * types.length)];
+    }
+    
+    getRandomMovementType() {
+        const movementTypes = ['straight', 'zigzag', 'orbit'];
+        return movementTypes[Math.floor(Math.random() * movementTypes.length)];
+    }
+    
+    getMovementColor() {
+        // Return base color based on movement type
+        switch(this.movementType) {
+            case 'straight':
+                return '#00FF00'; // Green for direct approach
+            case 'zigzag':
+                return '#FFFF00'; // Yellow for weaving movement
+            case 'orbit':
+                return '#00FFFF'; // Cyan for orbital movement
+            default:
+                return '#FF0000'; // Red fallback
+        }
     }
     
     applyKnockback(knockbackForce, towerX, towerY) {
@@ -1583,9 +1640,84 @@ class Enemy {
         this.knockbackX *= this.knockbackDecay;
         this.knockbackY *= this.knockbackDecay;
         
-        // Move toward base
+        // Apply movement based on type
+        switch(this.movementType) {
+            case 'straight':
+                this.updateStraightMovement(dx, dy, distance);
+                break;
+            case 'zigzag':
+                this.updateZigzagMovement(dx, dy, distance);
+                break;
+            case 'orbit':
+                this.updateOrbitalMovement(dx, dy, distance);
+                break;
+        }
+    }
+    
+    updateStraightMovement(dx, dy, distance) {
+        // Move directly toward base
         this.x += (dx / distance) * this.speed;
         this.y += (dy / distance) * this.speed;
+    }
+    
+    updateZigzagMovement(dx, dy, distance) {
+        // Update zigzag timer
+        this.zigzagTimer += this.zigzagFrequency;
+        
+        // Change direction periodically
+        if (this.zigzagTimer >= 1) {
+            this.zigzagDirection *= -1;
+            this.zigzagTimer = 0;
+        }
+        
+        // Calculate perpendicular direction for zigzag
+        const perpX = -dy / distance;
+        const perpY = dx / distance;
+        
+        // Move toward base with reduced zigzag offset to maintain better progress
+        const zigzagIntensity = 0.2; // Reduced from 0.3 to maintain better forward progress
+        this.x += (dx / distance) * this.speed + perpX * this.zigzagDirection * this.speed * zigzagIntensity;
+        this.y += (dy / distance) * this.speed + perpY * this.zigzagDirection * this.speed * zigzagIntensity;
+    }
+    
+    updateOrbitalMovement(dx, dy, distance) {
+        // Initialize orbital parameters if not set
+        if (this.orbitRadius === 0) {
+            this.orbitRadius = Math.max(60, distance * 0.7); // Start orbit at 70% of current distance
+            this.orbitAngle = Math.atan2(dy, dx); // Start angle toward base
+            // Calculate initial orbital velocity for stable orbit
+            this.orbitalVelocity = this.speed * 0.3; // Stable orbital velocity
+        }
+        
+        // Gravitational force pulls enemy toward tower
+        const gravitationalForce = this.speed * 0.5; // Reduced gravitational acceleration
+        const radialAcceleration = gravitationalForce / this.orbitRadius;
+        
+        // Update orbital velocity with gravitational acceleration
+        this.orbitalVelocity += radialAcceleration * 0.05; // Slower acceleration
+        
+        // Energy loss causes orbital decay (enemies gradually spiral inward)
+        this.orbitalVelocity *= (1 - this.energyLoss * 2); // Increased energy loss
+        
+        // Update orbital angle based on tangential velocity
+        this.orbitAngle += this.orbitalVelocity / this.orbitRadius;
+        
+        // Calculate orbital position
+        const orbitX = this.base.x + Math.cos(this.orbitAngle) * this.orbitRadius;
+        const orbitY = this.base.y + Math.sin(this.orbitAngle) * this.orbitRadius;
+        
+        // Move toward orbital position
+        const orbitDx = orbitX - this.x;
+        const orbitDy = orbitY - this.y;
+        const orbitDistance = Math.sqrt(orbitDx * orbitDx + orbitDy * orbitDy);
+        
+        if (orbitDistance > 0) {
+            this.x += (orbitDx / orbitDistance) * this.speed;
+            this.y += (orbitDy / orbitDistance) * this.speed;
+        }
+        
+        // More aggressive radius reduction to ensure enemies fall into tower
+        this.orbitRadius = Math.max(this.base.radius + 5, this.orbitRadius - this.speed * 0.15);
     }
     
     render(ctx) {
@@ -1612,6 +1744,9 @@ class Enemy {
         
         // Draw health bar
         this.renderHealthBar(ctx);
+        
+        // Draw movement type indicator
+        this.renderMovementIndicator(ctx);
     }
     
     adjustColorBrightness(hex, amount) {
@@ -1630,24 +1765,25 @@ class Enemy {
     }
     
     renderImp(ctx) {
-        // Imp body (brownish-red) - darker for higher waves
+        // Imp body - color based on movement type
         const waveIntensity = Math.min(0.3, (this.wave - 1) * 0.05);
-        const baseColor = '#8B4513';
-        const waveColor = this.adjustColorBrightness(baseColor, waveIntensity);
+        const movementColor = this.getMovementColor();
+        const bodyColor = this.adjustColorBrightness(movementColor, waveIntensity);
         
-        ctx.fillStyle = waveColor;
+        ctx.fillStyle = bodyColor;
         ctx.beginPath();
         ctx.arc(this.x, this.y, 8 + (this.wave - 1) * 0.5, 0, Math.PI * 2);
         ctx.fill();
         
-        // Imp head (darker)
-        ctx.fillStyle = '#654321';
+        // Imp head (darker version of movement color)
+        const headColor = this.adjustColorBrightness(movementColor, -0.3);
+        ctx.fillStyle = headColor;
         ctx.beginPath();
         ctx.arc(this.x, this.y - 2, 6 + (this.wave - 1) * 0.3, 0, Math.PI * 2);
         ctx.fill();
         
-        // Imp eyes (red) - brighter for higher waves
-        const eyeColor = this.adjustColorBrightness('#FF0000', waveIntensity);
+        // Imp eyes (bright version of movement color)
+        const eyeColor = this.adjustColorBrightness(movementColor, 0.2);
         ctx.fillStyle = eyeColor;
         ctx.beginPath();
         ctx.arc(this.x - 2, this.y - 3, 1.5 + (this.wave - 1) * 0.1, 0, Math.PI * 2);
@@ -1658,24 +1794,25 @@ class Enemy {
     }
     
     renderCacodemon(ctx) {
-        // Cacodemon body (pinkish-red) - brighter for higher waves
+        // Cacodemon body - color based on movement type
         const waveIntensity = Math.min(0.3, (this.wave - 1) * 0.05);
-        const baseColor = '#FF69B4';
-        const waveColor = this.adjustColorBrightness(baseColor, waveIntensity);
+        const movementColor = this.getMovementColor();
+        const bodyColor = this.adjustColorBrightness(movementColor, waveIntensity);
         
-        ctx.fillStyle = waveColor;
+        ctx.fillStyle = bodyColor;
         ctx.beginPath();
         ctx.arc(this.x, this.y, 10 + (this.wave - 1) * 0.5, 0, Math.PI * 2);
         ctx.fill();
         
-        // Cacodemon mouth (dark)
-        ctx.fillStyle = '#8B0000';
+        // Cacodemon mouth (darker version of movement color)
+        const mouthColor = this.adjustColorBrightness(movementColor, -0.4);
+        ctx.fillStyle = mouthColor;
         ctx.beginPath();
         ctx.arc(this.x, this.y + 2, 4 + (this.wave - 1) * 0.3, 0, Math.PI * 2);
         ctx.fill();
         
-        // Cacodemon eye (yellow) - brighter for higher waves
-        const eyeColor = this.adjustColorBrightness('#FFFF00', waveIntensity);
+        // Cacodemon eye (bright version of movement color)
+        const eyeColor = this.adjustColorBrightness(movementColor, 0.3);
         ctx.fillStyle = eyeColor;
         ctx.beginPath();
         ctx.arc(this.x, this.y - 2, 3 + (this.wave - 1) * 0.2, 0, Math.PI * 2);
@@ -1683,18 +1820,19 @@ class Enemy {
     }
     
     renderPinky(ctx) {
-        // Pinky body (pink) - brighter for higher waves
+        // Pinky body - color based on movement type
         const waveIntensity = Math.min(0.3, (this.wave - 1) * 0.05);
-        const baseColor = '#FF1493';
-        const waveColor = this.adjustColorBrightness(baseColor, waveIntensity);
+        const movementColor = this.getMovementColor();
+        const bodyColor = this.adjustColorBrightness(movementColor, waveIntensity);
         
-        ctx.fillStyle = waveColor;
+        ctx.fillStyle = bodyColor;
         ctx.beginPath();
         ctx.arc(this.x, this.y, 9 + (this.wave - 1) * 0.5, 0, Math.PI * 2);
         ctx.fill();
         
-        // Pinky horns (dark) - larger for higher waves
-        ctx.fillStyle = '#2F2F2F';
+        // Pinky horns (darker version of movement color)
+        const hornColor = this.adjustColorBrightness(movementColor, -0.5);
+        ctx.fillStyle = hornColor;
         ctx.beginPath();
         ctx.arc(this.x - 3, this.y - 5, 2 + (this.wave - 1) * 0.2, 0, Math.PI * 2);
         ctx.fill();
@@ -1702,8 +1840,8 @@ class Enemy {
         ctx.arc(this.x + 3, this.y - 5, 2 + (this.wave - 1) * 0.2, 0, Math.PI * 2);
         ctx.fill();
         
-        // Pinky eyes (red) - brighter for higher waves
-        const eyeColor = this.adjustColorBrightness('#FF0000', waveIntensity);
+        // Pinky eyes (bright version of movement color)
+        const eyeColor = this.adjustColorBrightness(movementColor, 0.2);
         ctx.fillStyle = eyeColor;
         ctx.beginPath();
         ctx.arc(this.x - 2, this.y - 1, 1.5 + (this.wave - 1) * 0.1, 0, Math.PI * 2);
@@ -1725,6 +1863,36 @@ class Enemy {
         // Health bar fill
         ctx.fillStyle = healthPercent > 0.5 ? '#00FF00' : healthPercent > 0.25 ? '#FFFF00' : '#FF0000';
         ctx.fillRect(this.x - barWidth/2, this.y - 15, barWidth * healthPercent, barHeight);
+    }
+    
+    renderMovementIndicator(ctx) {
+        // Draw small indicator above health bar to show movement type
+        ctx.save();
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        let indicatorText = '';
+        let indicatorColor = '#FFFFFF';
+        
+        switch(this.movementType) {
+            case 'straight':
+                indicatorText = '→';
+                indicatorColor = '#00FF00';
+                break;
+            case 'zigzag':
+                indicatorText = '↗';
+                indicatorColor = '#FFFF00';
+                break;
+            case 'orbit':
+                indicatorText = '🪐';
+                indicatorColor = '#00FFFF';
+                break;
+        }
+        
+        ctx.fillStyle = indicatorColor;
+        ctx.fillText(indicatorText, this.x, this.y - 25);
+        ctx.restore();
     }
 }
 
