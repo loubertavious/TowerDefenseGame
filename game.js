@@ -24,6 +24,15 @@ class TowerDefenseGame {
             duration: 2000 // 2 seconds
         };
         
+        // Screen shake system
+        this.screenShake = {
+            intensity: 0,
+            duration: 0,
+            timer: 0,
+            offsetX: 0,
+            offsetY: 0
+        };
+        
         // Game objects
         this.tower = null; // Single tower
         this.enemies = [];
@@ -47,6 +56,7 @@ class TowerDefenseGame {
             range: 200,
             fireRate: 800,
             bulletSpeed: 5,
+            knockback: 0, // Knockback force
             color: '#8B0000', // Dark red
             size: 15
         };
@@ -101,6 +111,14 @@ class TowerDefenseGame {
                     { cost: 4000, effect: 1, description: "+1 Satellite Eye" },
                     { cost: 8000, effect: 1, description: "+1 Satellite Eye" }
                 ]
+            },
+            knockback: {
+                name: "Force",
+                infinite: true,
+                baseCost: 100,
+                baseEffect: 2,
+                costMultiplier: 1.8,
+                effectMultiplier: 1.3
             }
         };
         
@@ -110,7 +128,8 @@ class TowerDefenseGame {
             range: 0,
             fireRate: 0,
             bulletSpeed: 0,
-            multishot: 0
+            multishot: 0,
+            knockback: 0
         };
         
         this.init();
@@ -311,6 +330,8 @@ class TowerDefenseGame {
                 upgradeDescription = `${upgradeEffect}ms Fury Speed`;
             } else if (category === 'bulletSpeed') {
                 upgradeDescription = `+${upgradeEffect} Bullet Speed`;
+            } else if (category === 'knockback') {
+                upgradeDescription = `+${upgradeEffect} Knockback Force`;
             }
         } else {
             // Handle finite upgrades (Vision, Multishot)
@@ -357,6 +378,9 @@ class TowerDefenseGame {
                 break;
             case 'multishot':
                 // Multishot doesn't modify tower stats, just updates satellite eyes
+                break;
+            case 'knockback':
+                this.towerStats.knockback += effect;
                 break;
         }
         
@@ -570,6 +594,9 @@ class TowerDefenseGame {
             }
         }
         
+        // Update screen shake
+        this.updateScreenShake();
+        
         // Update enemies
         this.enemies.forEach((enemy, index) => {
             enemy.update();
@@ -578,6 +605,9 @@ class TowerDefenseGame {
                 this.gameState.health = Math.max(0, this.gameState.health); // Prevent negative health
                 this.enemies.splice(index, 1);
                 this.updateUI(); // Update UI when health changes
+                
+                // Screen shake for taking damage
+                this.addScreenShake(10, 200);
                 
                 console.log(`Enemy reached base! Health: ${this.gameState.health}`);
                 
@@ -589,6 +619,9 @@ class TowerDefenseGame {
                 this.gameState.money += enemy.reward;
                 this.enemies.splice(index, 1);
                 this.updateUI(); // Update UI when money changes
+                
+                // Screen shake for enemy death
+                this.addScreenShake(6, 150);
             }
         });
         
@@ -599,12 +632,15 @@ class TowerDefenseGame {
             const projectiles = this.tower.fire();
             if (projectiles) {
                 this.projectiles.push(...projectiles);
+                
+                // Screen shake for tower firing
+                this.addScreenShake(4, 80);
             }
         }
         
         // Update projectiles
         this.projectiles.forEach((projectile, index) => {
-            projectile.update();
+            projectile.update(this); // Pass game instance for screen shake
             if (projectile.shouldRemove) {
                 // Create explosion particles
                 this.createExplosionParticles(projectile.x, projectile.y);
@@ -630,6 +666,10 @@ class TowerDefenseGame {
     }
     
     render() {
+        // Apply screen shake offset
+        this.ctx.save();
+        this.ctx.translate(this.screenShake.offsetX, this.screenShake.offsetY);
+        
         // Clear canvas with dark hell background
         this.ctx.fillStyle = '#0a0a0a';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -670,6 +710,9 @@ class TowerDefenseGame {
         if (this.devMenuOpen) {
             this.drawDevMenu();
         }
+        
+        // Restore context (undo screen shake transform)
+        this.ctx.restore();
     }
     
     drawGrid() {
@@ -841,6 +884,34 @@ class TowerDefenseGame {
         this.ctx.restore();
     }
     
+    // Screen shake methods
+    addScreenShake(intensity, duration) {
+        this.screenShake.intensity = Math.max(this.screenShake.intensity, intensity);
+        this.screenShake.duration = Math.max(this.screenShake.duration, duration);
+        this.screenShake.timer = 0;
+    }
+    
+    updateScreenShake() {
+        if (this.screenShake.timer < this.screenShake.duration) {
+            this.screenShake.timer += 16; // Approximate frame time (60fps)
+            
+            // Calculate shake intensity (fades out over time)
+            const progress = this.screenShake.timer / this.screenShake.duration;
+            const currentIntensity = this.screenShake.intensity * (1 - progress);
+            
+            // Generate random shake offset
+            this.screenShake.offsetX = (Math.random() - 0.5) * currentIntensity;
+            this.screenShake.offsetY = (Math.random() - 0.5) * currentIntensity;
+        } else {
+            // Reset shake when done
+            this.screenShake.intensity = 0;
+            this.screenShake.duration = 0;
+            this.screenShake.timer = 0;
+            this.screenShake.offsetX = 0;
+            this.screenShake.offsetY = 0;
+        }
+    }
+    
     waveComplete() {
         this.gameState.gameRunning = false;
         this.gameState.wave++;
@@ -851,6 +922,9 @@ class TowerDefenseGame {
         // Show wave over popup
         this.waveOverPopup.show = true;
         this.waveOverPopup.timer = 0;
+        
+        // Screen shake for wave completion
+        this.addScreenShake(15, 500);
         
         // Auto-start next wave if enabled
         if (this.autoStartRounds) {
@@ -883,6 +957,7 @@ class TowerDefenseGame {
             range: 100,
             fireRate: 800,
             bulletSpeed: 5,
+            knockback: 0,
             color: '#8B0000',
             size: 20
         };
@@ -892,7 +967,8 @@ class TowerDefenseGame {
             range: 0,
             fireRate: 0,
             bulletSpeed: 0,
-            multishot: 0
+            multishot: 0,
+            knockback: 0
         };
         
         this.tower = new Tower(this.base.x, this.base.y, this.towerStats);
@@ -1318,12 +1394,30 @@ class Enemy {
         this.reachedBase = false;
         this.type = this.getRandomDemonType();
         
+        // Knockback system
+        this.knockbackX = 0;
+        this.knockbackY = 0;
+        this.knockbackDecay = 0.85; // How quickly knockback fades
+        
         console.log(`Wave ${wave} Enemy: Health=${this.health}, Damage=${this.damage}, Speed=${this.speed.toFixed(2)}, Reward=${this.reward}`);
     }
     
     getRandomDemonType() {
         const types = ['imp', 'cacodemon', 'pinky'];
         return types[Math.floor(Math.random() * types.length)];
+    }
+    
+    applyKnockback(knockbackForce, towerX, towerY) {
+        // Calculate direction away from tower
+        const dx = this.x - towerX;
+        const dy = this.y - towerY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance > 0) {
+            // Normalize direction and apply knockback force
+            this.knockbackX = (dx / distance) * knockbackForce;
+            this.knockbackY = (dy / distance) * knockbackForce;
+        }
     }
     
     update() {
@@ -1337,6 +1431,14 @@ class Enemy {
             this.reachedBase = true;
             return;
         }
+        
+        // Apply knockback movement
+        this.x += this.knockbackX;
+        this.y += this.knockbackY;
+        
+        // Decay knockback over time
+        this.knockbackX *= this.knockbackDecay;
+        this.knockbackY *= this.knockbackDecay;
         
         // Move toward base
         this.x += (dx / distance) * this.speed;
@@ -1508,7 +1610,7 @@ class Projectile {
         this.vy = Math.sin(randomAngle) * this.speed;
     }
     
-    update() {
+    update(gameInstance = null) {
         this.x += this.vx;
         this.y += this.vy;
         
@@ -1517,6 +1619,16 @@ class Projectile {
         if (distance < 10) {
             this.target.health -= this.damage;
             this.shouldRemove = true;
+            
+            // Apply knockback if game instance provided
+            if (gameInstance && gameInstance.tower && gameInstance.tower.data.knockback > 0) {
+                this.target.applyKnockback(gameInstance.tower.data.knockback, gameInstance.tower.x, gameInstance.tower.y);
+            }
+            
+            // Screen shake for projectile hit
+            if (gameInstance) {
+                gameInstance.addScreenShake(2, 50);
+            }
         }
         
         // Remove if out of bounds
@@ -1576,7 +1688,7 @@ class SmallProjectile {
         this.vy = Math.sin(randomAngle) * this.speed;
     }
     
-    update() {
+    update(gameInstance = null) {
         this.x += this.vx;
         this.y += this.vy;
         
@@ -1585,6 +1697,16 @@ class SmallProjectile {
         if (distance < 10) {
             this.target.health -= this.damage;
             this.shouldRemove = true;
+            
+            // Apply knockback if game instance provided
+            if (gameInstance && gameInstance.tower && gameInstance.tower.data.knockback > 0) {
+                this.target.applyKnockback(gameInstance.tower.data.knockback, gameInstance.tower.x, gameInstance.tower.y);
+            }
+            
+            // Screen shake for projectile hit
+            if (gameInstance) {
+                gameInstance.addScreenShake(2, 50);
+            }
         }
         
         // Remove if out of bounds
