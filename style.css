@@ -445,7 +445,7 @@ button:disabled {
 }
 
 .money-display .stat .label {
-    color: #DC143C;
+    color: #FFD700;
     font-family: 'Cinzel', serif;
     font-size: 18px;
     font-weight: 700;
@@ -453,7 +453,7 @@ button:disabled {
 }
 
 .money-display .stat span:last-child {
-    color: #DC143C;
+    color: #FFD700;
     font-weight: 700;
     font-family: 'Cinzel', serif;
     font-size: 18px;

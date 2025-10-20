@@ -10,6 +10,13 @@
     <div class="game-container">
         <!-- Left Panel - Controls -->
         <div class="left-panel">
+            <div class="money-display">
+                <div class="stat">
+                    <span class="label">Money:</span>
+                    <span id="money">$500</span>
+                </div>
+            </div>
+            
             <div class="controls">
                 <h3>Game Controls</h3>
                 <button id="start-wave">Start Wave</button>
@@ -26,13 +33,6 @@
         
         <!-- Right Panel - Upgrades and Shop -->
         <div class="right-panel">
-            <div class="money-display">
-                <div class="stat">
-                    <span class="label">Money:</span>
-                    <span id="money">$500</span>
-                </div>
-            </div>
-            
             <div class="tower-selection">
                 <h3>Tower Shop</h3>
                 
@@ -72,6 +72,12 @@
                         <div class="upgrade-button-content">
                             <div class="upgrade-name">Force</div>
                             <div class="upgrade-price">$100</div>
+                        </div>
+                    </button>
+                    <button id="upgrade-bulletSize" class="upgrade-category" data-category="bulletSize">
+                        <div class="upgrade-button-content">
+                            <div class="upgrade-name">Magnitude</div>
+                            <div class="upgrade-price">$150</div>
                         </div>
                     </button>
                 </div>

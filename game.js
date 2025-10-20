@@ -24,6 +24,9 @@ class TowerDefenseGame {
             duration: 2000 // 2 seconds
         };
         
+        // Money bonus popup system
+        this.moneyPopups = [];
+        
         // Screen shake system
         this.screenShake = {
             intensity: 0,
@@ -57,6 +60,7 @@ class TowerDefenseGame {
             fireRate: 800,
             bulletSpeed: 5,
             knockback: 0, // Knockback force
+            bulletSize: 1, // Bullet size multiplier
             color: '#8B0000', // Dark red
             size: 15
         };
@@ -119,6 +123,14 @@ class TowerDefenseGame {
                 baseEffect: 2,
                 costMultiplier: 1.8,
                 effectMultiplier: 1.3
+            },
+            bulletSize: {
+                name: "Magnitude",
+                infinite: true,
+                baseCost: 150,
+                baseEffect: 0.3,
+                costMultiplier: 2.0,
+                effectMultiplier: 1.2
             }
         };
         
@@ -129,7 +141,8 @@ class TowerDefenseGame {
             fireRate: 0,
             bulletSpeed: 0,
             multishot: 0,
-            knockback: 0
+            knockback: 0,
+            bulletSize: 0
         };
         
         this.init();
@@ -332,6 +345,8 @@ class TowerDefenseGame {
                 upgradeDescription = `+${upgradeEffect} Bullet Speed`;
             } else if (category === 'knockback') {
                 upgradeDescription = `+${upgradeEffect} Knockback Force`;
+            } else if (category === 'bulletSize') {
+                upgradeDescription = `+${upgradeEffect} Bullet Size`;
             }
         } else {
             // Handle finite upgrades (Vision, Multishot)
@@ -381,6 +396,9 @@ class TowerDefenseGame {
                 break;
             case 'knockback':
                 this.towerStats.knockback += effect;
+                break;
+            case 'bulletSize':
+                this.towerStats.bulletSize += effect;
                 break;
         }
         
@@ -594,6 +612,24 @@ class TowerDefenseGame {
             }
         }
         
+        // Update money popups
+        this.moneyPopups.forEach((popup, index) => {
+            popup.timer += 16;
+            popup.y += popup.velocityY;
+            
+            // Calculate fade out
+            const fadeStart = popup.duration * 0.7; // Start fading at 70% of duration
+            if (popup.timer > fadeStart) {
+                const fadeProgress = (popup.timer - fadeStart) / (popup.duration - fadeStart);
+                popup.alpha = Math.max(0, 1 - fadeProgress);
+            }
+            
+            // Remove expired popups
+            if (popup.timer >= popup.duration) {
+                this.moneyPopups.splice(index, 1);
+            }
+        });
+        
         // Update screen shake
         this.updateScreenShake();
         
@@ -620,6 +656,9 @@ class TowerDefenseGame {
                 this.enemies.splice(index, 1);
                 this.updateUI(); // Update UI when money changes
                 
+                // Create money popup for enemy kill
+                this.createEnemyKillPopup(enemy.reward, enemy.x, enemy.y);
+                
                 // Screen shake for enemy death
                 this.addScreenShake(6, 150);
             }
@@ -642,8 +681,8 @@ class TowerDefenseGame {
         this.projectiles.forEach((projectile, index) => {
             projectile.update(this); // Pass game instance for screen shake
             if (projectile.shouldRemove) {
-                // Create explosion particles
-                this.createExplosionParticles(projectile.x, projectile.y);
+                // Create explosion particles with projectile color
+                this.createExplosionParticles(projectile.x, projectile.y, projectile.color);
                 this.projectiles.splice(index, 1);
             }
         });
@@ -705,6 +744,11 @@ class TowerDefenseGame {
         if (this.waveOverPopup.show) {
             this.drawWaveOverPopup();
         }
+        
+        // Draw money popups
+        this.moneyPopups.forEach((popup, index) => {
+            this.drawMoneyPopup(popup);
+        });
         
         // Draw dev menu
         if (this.devMenuOpen) {
@@ -884,6 +928,30 @@ class TowerDefenseGame {
         this.ctx.restore();
     }
     
+    drawMoneyPopup(popup) {
+        this.ctx.save();
+        this.ctx.globalAlpha = popup.alpha;
+        
+        // Use dynamic font size
+        const fontSize = popup.fontSize || 24; // Fallback to 24px if not set
+        
+        // Draw text shadow
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        this.ctx.font = `bold ${fontSize}px Cinzel, serif`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(`+$${popup.amount}`, popup.x + 2, popup.y + 2);
+        
+        // Draw main text
+        this.ctx.fillStyle = '#FFD700';
+        this.ctx.font = `bold ${fontSize}px Cinzel, serif`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(`+$${popup.amount}`, popup.x, popup.y);
+        
+        this.ctx.restore();
+    }
+    
     // Screen shake methods
     addScreenShake(intensity, duration) {
         this.screenShake.intensity = Math.max(this.screenShake.intensity, intensity);
@@ -915,9 +983,17 @@ class TowerDefenseGame {
     waveComplete() {
         this.gameState.gameRunning = false;
         this.gameState.wave++;
-        this.gameState.money += 150; // Reduced wave completion bonus for more challenging economy
+        
+        // Calculate wave completion bonus with exponential scaling
+        const baseBonus = 150;
+        const waveBonus = Math.floor(baseBonus * Math.pow(1.2, this.gameState.wave - 1));
+        
+        this.gameState.money += waveBonus;
         document.getElementById('start-wave').disabled = false;
         this.updateUI(); // Update UI when wave and money change
+        
+        // Create money bonus popup
+        this.createMoneyPopup(waveBonus);
         
         // Show wave over popup
         this.waveOverPopup.show = true;
@@ -934,10 +1010,74 @@ class TowerDefenseGame {
         }
     }
     
-    createExplosionParticles(x, y) {
+    createExplosionParticles(x, y, color = '#FFD700') {
         for (let i = 0; i < 8; i++) {
-            this.particles.push(new Particle(x, y, '#FFD700'));
+            this.particles.push(new Particle(x, y, color));
         }
+    }
+    
+    createMoneyPopup(amount) {
+        console.log('Creating money popup for amount:', amount);
+        
+        // Use a fixed position within the canvas instead of trying to position relative to UI elements
+        const canvasWidth = this.canvas.width;
+        const canvasHeight = this.canvas.height;
+        
+        // Position popup in the upper-right area of the canvas (near where money display would be)
+        const baseX = canvasWidth - 150; // Right side of canvas
+        const baseY = 150; // Lower on screen for better visibility
+        
+        // Add random offset around this base position
+        const offsetX = (Math.random() - 0.5) * 100; // ±50px horizontal
+        const offsetY = (Math.random() - 0.5) * 60;  // ±30px vertical
+        
+        const popup = {
+            x: baseX + offsetX,
+            y: baseY + offsetY,
+            amount: amount,
+            timer: 0,
+            duration: 3000, // 3 seconds - longer visibility
+            velocityY: -0.5, // Slower upward movement
+            alpha: 1.0,
+            fontSize: this.calculateFontSize(amount) // Dynamic font size based on amount
+        };
+        
+        this.moneyPopups.push(popup);
+    }
+    
+    calculateFontSize(amount) {
+        // Base font size for small amounts
+        let baseSize = 20;
+        
+        if (amount >= 1000) {
+            // Large amounts (wave completion bonuses)
+            baseSize = 28 + Math.min(12, Math.floor(amount / 500)); // 28-40px
+        } else if (amount >= 100) {
+            // Medium amounts
+            baseSize = 24 + Math.min(4, Math.floor(amount / 100)); // 24-28px
+        } else {
+            // Small amounts (enemy kills)
+            baseSize = 18 + Math.min(6, Math.floor(amount / 10)); // 18-24px
+        }
+        
+        return Math.min(48, baseSize); // Cap at 48px
+    }
+    
+    createEnemyKillPopup(amount, enemyX, enemyY) {
+        // Position popup at enemy location with some offset
+        const offsetX = (Math.random() - 0.5) * 40; // ±20px horizontal
+        const offsetY = (Math.random() - 0.5) * 40; // ±20px vertical
+        
+        this.moneyPopups.push({
+            x: enemyX + offsetX,
+            y: enemyY + offsetY,
+            amount: amount,
+            timer: 0,
+            duration: 2000, // 2 seconds for enemy kills
+            velocityY: -0.8, // Slightly faster than wave completion
+            alpha: 1.0,
+            fontSize: this.calculateFontSize(amount) // Dynamic font size based on amount
+        });
     }
     
     gameOver() {
@@ -958,6 +1098,7 @@ class TowerDefenseGame {
             fireRate: 800,
             bulletSpeed: 5,
             knockback: 0,
+            bulletSize: 1,
             color: '#8B0000',
             size: 20
         };
@@ -968,13 +1109,15 @@ class TowerDefenseGame {
             fireRate: 0,
             bulletSpeed: 0,
             multishot: 0,
-            knockback: 0
+            knockback: 0,
+            bulletSize: 0
         };
         
         this.tower = new Tower(this.base.x, this.base.y, this.towerStats);
         this.enemies = [];
         this.projectiles = [];
         this.particles = [];
+        this.moneyPopups = []; // Clear money popups on reset
         document.getElementById('start-wave').disabled = false;
     }
 }
@@ -1110,7 +1253,7 @@ class Tower {
             // Perfect aim (0 degrees) = 1.0 accuracy, 30 degrees = 0.5 accuracy, 60+ degrees = 0.1 accuracy
             const accuracy = Math.max(0.1, 1.0 - (angleDifference / (Math.PI / 3)));
             
-            projectiles.push(new Projectile(this.x, this.y, this.target, this.data.damage, this.data.bulletSpeed, accuracy));
+            projectiles.push(new Projectile(this.x, this.y, this.target, this.data.damage, this.data.bulletSpeed, accuracy, this.data));
         }
         
         // Satellite eye projectiles (always check, independent timing)
@@ -1318,7 +1461,7 @@ class SmallEye {
             // Accuracy decreases as angle difference increases
             const accuracy = Math.max(0.1, 1.0 - (angleDifference / (Math.PI / 3)));
             
-            return new SmallProjectile(this.x, this.y, this.target, this.towerData.damage * 0.5, this.towerData.bulletSpeed, accuracy);
+            return new SmallProjectile(this.x, this.y, this.target, this.towerData.damage * 0.5, this.towerData.bulletSpeed, accuracy, this.towerData);
         }
         return null;
     }
@@ -1587,14 +1730,23 @@ class Enemy {
 
 // Projectile class
 class Projectile {
-    constructor(x, y, target, damage, speed = 5, accuracy = 1.0) {
+    constructor(x, y, target, damage, speed = 5, accuracy = 1.0, towerData = null) {
         this.x = x;
         this.y = y;
         this.target = target;
         this.damage = damage;
         this.speed = speed;
         this.accuracy = accuracy; // 1.0 = perfect accuracy, 0.0 = completely random
+        this.towerData = towerData; // Store tower data for color calculation
         this.shouldRemove = false;
+        this.hitsRemaining = 1; // Default: single hit
+        
+        // Calculate projectile color based on upgrades
+        this.color = this.calculateProjectileColor();
+        
+        // Calculate bullet size and piercing capability
+        this.size = this.calculateBulletSize();
+        this.piercing = this.calculatePiercing();
         
         // Calculate direction with accuracy-based randomness
         const dx = target.x - x;
@@ -1610,25 +1762,92 @@ class Projectile {
         this.vy = Math.sin(randomAngle) * this.speed;
     }
     
+    calculateBulletSize() {
+        if (!this.towerData) return 1;
+        return Math.max(1, this.towerData.bulletSize);
+    }
+    
+    calculatePiercing() {
+        if (!this.towerData) return 1;
+        // Larger bullets can pierce through more enemies
+        return Math.max(1, Math.floor(this.towerData.bulletSize * 2));
+    }
+    
+    calculateProjectileColor() {
+        if (!this.towerData) return '#FF4500'; // Default orange
+        
+        // Base color (damage upgrade)
+        let baseColor = '#FF4500'; // Orange for hellfire
+        
+        // Add colors based on upgrades
+        let colorComponents = {
+            r: 255, // Red component
+            g: 69,  // Green component  
+            b: 0    // Blue component
+        };
+        
+        // Damage upgrade adds more red intensity
+        if (this.towerData.damage > 35) {
+            colorComponents.r = Math.min(255, 255 + (this.towerData.damage - 35) * 2);
+        }
+        
+        // Range upgrade adds blue tint
+        if (this.towerData.range > 200) {
+            colorComponents.b = Math.min(255, (this.towerData.range - 200) * 3);
+        }
+        
+        // Fire rate upgrade adds yellow tint
+        if (this.towerData.fireRate < 800) {
+            colorComponents.g = Math.min(255, 69 + (800 - this.towerData.fireRate) * 0.5);
+        }
+        
+        // Bullet speed upgrade adds white intensity
+        if (this.towerData.bulletSpeed > 5) {
+            const speedBonus = (this.towerData.bulletSpeed - 5) * 20;
+            colorComponents.r = Math.min(255, colorComponents.r + speedBonus);
+            colorComponents.g = Math.min(255, colorComponents.g + speedBonus);
+            colorComponents.b = Math.min(255, colorComponents.b + speedBonus);
+        }
+        
+        // Knockback upgrade adds purple tint
+        if (this.towerData.knockback > 0) {
+            colorComponents.r = Math.min(255, colorComponents.r + this.towerData.knockback * 10);
+            colorComponents.b = Math.min(255, colorComponents.b + this.towerData.knockback * 15);
+        }
+        
+        return `rgb(${Math.floor(colorComponents.r)}, ${Math.floor(colorComponents.g)}, ${Math.floor(colorComponents.b)})`;
+    }
+    
     update(gameInstance = null) {
         this.x += this.vx;
         this.y += this.vy;
         
-        // Check collision with target
-        const distance = Math.sqrt((this.x - this.target.x) ** 2 + (this.y - this.target.y) ** 2);
-        if (distance < 10) {
-            this.target.health -= this.damage;
-            this.shouldRemove = true;
-            
-            // Apply knockback if game instance provided
-            if (gameInstance && gameInstance.tower && gameInstance.tower.data.knockback > 0) {
-                this.target.applyKnockback(gameInstance.tower.data.knockback, gameInstance.tower.x, gameInstance.tower.y);
-            }
-            
-            // Screen shake for projectile hit
-            if (gameInstance) {
-                gameInstance.addScreenShake(2, 50);
-            }
+        // Check collision with all enemies for piercing
+        if (gameInstance && gameInstance.enemies) {
+            gameInstance.enemies.forEach((enemy, enemyIndex) => {
+                const distance = Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2);
+                const collisionRadius = 10 + (this.size - 1) * 5; // Larger bullets have bigger collision radius
+                
+                if (distance < collisionRadius && this.hitsRemaining > 0) {
+                    enemy.health -= this.damage;
+                    this.hitsRemaining--;
+                    
+                    // Apply knockback if game instance provided
+                    if (gameInstance.tower && gameInstance.tower.data.knockback > 0) {
+                        enemy.applyKnockback(gameInstance.tower.data.knockback, gameInstance.tower.x, gameInstance.tower.y);
+                    }
+                    
+                    // Screen shake for projectile hit
+                    if (gameInstance) {
+                        gameInstance.addScreenShake(2, 50);
+                    }
+                    
+                    // Remove projectile if no hits remaining
+                    if (this.hitsRemaining <= 0) {
+                        this.shouldRemove = true;
+                    }
+                }
+            });
         }
         
         // Remove if out of bounds
@@ -1638,25 +1857,26 @@ class Projectile {
     }
     
     render(ctx) {
-        // Draw hellfire projectile trail
-        ctx.strokeStyle = '#FF4500';
-        ctx.lineWidth = 3;
+        // Draw hellfire projectile trail with dynamic color
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 3 * this.size; // Scale line width with bullet size
         ctx.globalAlpha = 0.8;
         ctx.beginPath();
         ctx.moveTo(this.x - this.vx * 3, this.y - this.vy * 3);
         ctx.lineTo(this.x, this.y);
         ctx.stroke();
         
-        // Draw hellfire outer glow
-        ctx.fillStyle = 'rgba(255, 69, 0, 0.4)';
+        // Draw hellfire outer glow with dynamic color and size
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = 0.4;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, 7, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, 7 * this.size, 0, Math.PI * 2);
         ctx.fill();
         
-        // Draw hellfire core
+        // Draw hellfire core with dynamic size
         ctx.fillStyle = '#FFD700';
         ctx.beginPath();
-        ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, 3 * this.size, 0, Math.PI * 2);
         ctx.fill();
         
         ctx.globalAlpha = 1;
@@ -1665,14 +1885,23 @@ class Projectile {
 
 // SmallProjectile class for satellite eye bullets
 class SmallProjectile {
-    constructor(x, y, target, damage, speed = 5, accuracy = 1.0) {
+    constructor(x, y, target, damage, speed = 5, accuracy = 1.0, towerData = null) {
         this.x = x;
         this.y = y;
         this.target = target;
         this.damage = damage;
         this.speed = speed;
         this.accuracy = accuracy;
+        this.towerData = towerData; // Store tower data for color calculation
         this.shouldRemove = false;
+        this.hitsRemaining = 1; // Default: single hit
+        
+        // Calculate projectile color based on upgrades (smaller version)
+        this.color = this.calculateSmallProjectileColor();
+        
+        // Calculate bullet size and piercing capability (smaller than main projectiles)
+        this.size = this.calculateSmallBulletSize();
+        this.piercing = this.calculateSmallPiercing();
         
         // Calculate direction with accuracy-based randomness
         const dx = target.x - x;
@@ -1688,25 +1917,89 @@ class SmallProjectile {
         this.vy = Math.sin(randomAngle) * this.speed;
     }
     
+    calculateSmallBulletSize() {
+        if (!this.towerData) return 0.7; // Smaller than main bullets
+        return Math.max(0.7, this.towerData.bulletSize * 0.7);
+    }
+    
+    calculateSmallPiercing() {
+        if (!this.towerData) return 1;
+        // Smaller bullets pierce less than main bullets
+        return Math.max(1, Math.floor(this.towerData.bulletSize * 1.5));
+    }
+    
+    calculateSmallProjectileColor() {
+        if (!this.towerData) return '#FF4500'; // Default orange
+        
+        // Similar to main projectile but dimmer for satellite eyes
+        let colorComponents = {
+            r: 200, // Red component (dimmer)
+            g: 50,  // Green component  
+            b: 0    // Blue component
+        };
+        
+        // Damage upgrade adds more red intensity
+        if (this.towerData.damage > 35) {
+            colorComponents.r = Math.min(255, 200 + (this.towerData.damage - 35) * 1.5);
+        }
+        
+        // Range upgrade adds blue tint
+        if (this.towerData.range > 200) {
+            colorComponents.b = Math.min(255, (this.towerData.range - 200) * 2);
+        }
+        
+        // Fire rate upgrade adds yellow tint
+        if (this.towerData.fireRate < 800) {
+            colorComponents.g = Math.min(255, 50 + (800 - this.towerData.fireRate) * 0.3);
+        }
+        
+        // Bullet speed upgrade adds white intensity
+        if (this.towerData.bulletSpeed > 5) {
+            const speedBonus = (this.towerData.bulletSpeed - 5) * 15;
+            colorComponents.r = Math.min(255, colorComponents.r + speedBonus);
+            colorComponents.g = Math.min(255, colorComponents.g + speedBonus);
+            colorComponents.b = Math.min(255, colorComponents.b + speedBonus);
+        }
+        
+        // Knockback upgrade adds purple tint
+        if (this.towerData.knockback > 0) {
+            colorComponents.r = Math.min(255, colorComponents.r + this.towerData.knockback * 8);
+            colorComponents.b = Math.min(255, colorComponents.b + this.towerData.knockback * 12);
+        }
+        
+        return `rgb(${Math.floor(colorComponents.r)}, ${Math.floor(colorComponents.g)}, ${Math.floor(colorComponents.b)})`;
+    }
+    
     update(gameInstance = null) {
         this.x += this.vx;
         this.y += this.vy;
         
-        // Check collision with target
-        const distance = Math.sqrt((this.x - this.target.x) ** 2 + (this.y - this.target.y) ** 2);
-        if (distance < 10) {
-            this.target.health -= this.damage;
-            this.shouldRemove = true;
-            
-            // Apply knockback if game instance provided
-            if (gameInstance && gameInstance.tower && gameInstance.tower.data.knockback > 0) {
-                this.target.applyKnockback(gameInstance.tower.data.knockback, gameInstance.tower.x, gameInstance.tower.y);
-            }
-            
-            // Screen shake for projectile hit
-            if (gameInstance) {
-                gameInstance.addScreenShake(2, 50);
-            }
+        // Check collision with all enemies for piercing
+        if (gameInstance && gameInstance.enemies) {
+            gameInstance.enemies.forEach((enemy, enemyIndex) => {
+                const distance = Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2);
+                const collisionRadius = 10 + (this.size - 1) * 5; // Larger bullets have bigger collision radius
+                
+                if (distance < collisionRadius && this.hitsRemaining > 0) {
+                    enemy.health -= this.damage;
+                    this.hitsRemaining--;
+                    
+                    // Apply knockback if game instance provided
+                    if (gameInstance.tower && gameInstance.tower.data.knockback > 0) {
+                        enemy.applyKnockback(gameInstance.tower.data.knockback, gameInstance.tower.x, gameInstance.tower.y);
+                    }
+                    
+                    // Screen shake for projectile hit
+                    if (gameInstance) {
+                        gameInstance.addScreenShake(2, 50);
+                    }
+                    
+                    // Remove projectile if no hits remaining
+                    if (this.hitsRemaining <= 0) {
+                        this.shouldRemove = true;
+                    }
+                }
+            });
         }
         
         // Remove if out of bounds
@@ -1716,25 +2009,26 @@ class SmallProjectile {
     }
     
     render(ctx) {
-        // Draw smaller hellfire projectile trail
-        ctx.strokeStyle = '#FF4500';
-        ctx.lineWidth = 2;
+        // Draw smaller hellfire projectile trail with dynamic color
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 2 * this.size; // Scale line width with bullet size
         ctx.globalAlpha = 0.6;
         ctx.beginPath();
         ctx.moveTo(this.x - this.vx * 2, this.y - this.vy * 2);
         ctx.lineTo(this.x, this.y);
         ctx.stroke();
         
-        // Draw smaller hellfire outer glow
-        ctx.fillStyle = 'rgba(255, 69, 0, 0.3)';
+        // Draw smaller hellfire outer glow with dynamic color and size
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = 0.3;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, 4 * this.size, 0, Math.PI * 2);
         ctx.fill();
         
-        // Draw smaller hellfire core
+        // Draw smaller hellfire core with dynamic size
         ctx.fillStyle = '#FFD700';
         ctx.beginPath();
-        ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, 2 * this.size, 0, Math.PI * 2);
         ctx.fill();
         
         ctx.globalAlpha = 1;
