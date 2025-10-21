@@ -519,119 +519,257 @@ button:disabled {
 /* Mobile and Touch Support */
 @media (max-width: 768px) {
     body {
-        overflow-x: hidden;
+        overflow: hidden;
         -webkit-overflow-scrolling: touch;
     }
     
-    .game-container {
-        flex-direction: column;
-        height: auto;
-        min-height: 100vh;
-        padding: 5px;
-        gap: 5px;
+    /* Hide desktop layout on mobile */
+    .desktop-layout {
+        display: none;
     }
     
-    .left-panel,
-    .right-panel {
-        width: 100%;
+    /* Show mobile layout */
+    .mobile-layout {
+        display: block;
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+    }
+    
+    /* Full-screen mobile canvas */
+    #gameCanvasMobile {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        border: none;
+        background: #0a0a0a;
+        cursor: pointer;
+        touch-action: none;
+        image-rendering: pixelated;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: crisp-edges;
+    }
+    
+    /* Mobile Money Display - Top Right Corner */
+    .mobile-money-display {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #1a0a0a 0%, #0a0a0a 100%);
+        border: 2px solid #8B0000;
+        border-radius: 10px;
+        padding: 12px 20px;
+        box-shadow: 
+            0 0 20px rgba(139, 0, 0, 0.4),
+            inset 0 0 15px rgba(139, 0, 0, 0.1);
+        z-index: 1000;
+        backdrop-filter: blur(5px);
+    }
+    
+    .mobile-money-display span {
+        color: #FFD700;
+        font-family: 'Cinzel', serif;
+        font-size: 20px;
+        font-weight: 700;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    }
+    
+    /* Mobile Dropdown Styles */
+    .mobile-controls-dropdown,
+    .mobile-upgrades-dropdown {
+        position: absolute;
+        z-index: 1000;
+    }
+    
+    .mobile-controls-dropdown {
+        top: 20px;
+        left: 20px;
+    }
+    
+    .mobile-upgrades-dropdown {
+        bottom: 20px;
+        left: 20px;
+    }
+    
+    /* Dropdown Toggle Button */
+    .mobile-dropdown-toggle {
+        background: linear-gradient(135deg, #1a0a0a 0%, #0a0a0a 100%);
+        border: 2px solid #8B0000;
+        border-radius: 10px;
+        padding: 12px 16px;
+        color: #8B0000;
+        font-family: 'Cinzel', serif;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 
+            0 0 20px rgba(139, 0, 0, 0.4),
+            inset 0 0 15px rgba(139, 0, 0, 0.1);
+        backdrop-filter: blur(5px);
+        touch-action: manipulation;
+        min-height: 50px;
+    }
+    
+    .mobile-dropdown-toggle:hover {
+        background: linear-gradient(135deg, #2a0a0a 0%, #1a0a0a 100%);
+        border-color: #DC143C;
+    }
+    
+    .dropdown-icon {
+        font-size: 18px;
+        color: #DC143C;
+    }
+    
+    .dropdown-label {
+        color: #8B0000;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    /* Dropdown Content */
+    .mobile-dropdown-content {
+        position: absolute;
+        background: linear-gradient(135deg, #1a0a0a 0%, #0a0a0a 100%);
+        border: 2px solid #8B0000;
+        border-radius: 10px;
         padding: 10px;
+        box-shadow: 
+            0 0 30px rgba(139, 0, 0, 0.6),
+            inset 0 0 20px rgba(139, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+        display: none;
         flex-direction: column;
-        max-height: none;
-    }
-    
-    .left-panel {
-        order: 1;
-        flex-direction: row;
-        flex-wrap: wrap;
-        justify-content: space-around;
-        align-items: flex-start;
-    }
-    
-    .money-display {
-        flex: 1;
-        min-width: 120px;
-        margin-right: 10px;
-    }
-    
-    .controls {
-        flex: 1;
+        gap: 8px;
         min-width: 200px;
-    }
-    
-    #gameCanvas {
-        order: 2;
-        width: 100%;
-        max-width: 100vw;
-        height: 50vh;
-        min-height: 300px;
-        margin: 5px 0;
-        border-width: 2px;
-    }
-    
-    .right-panel {
-        order: 3;
-        max-height: 40vh;
+        max-height: 60vh;
         overflow-y: auto;
     }
     
-    /* Larger touch targets for mobile */
-    button {
-        padding: 15px 20px;
-        font-size: 18px;
-        min-height: 50px;
-        touch-action: manipulation;
+    .mobile-controls-dropdown .mobile-dropdown-content {
+        top: 100%;
+        left: 0;
+        margin-top: 5px;
     }
     
-    .upgrade-category {
-        padding: 15px 20px;
+    .mobile-upgrades-dropdown .mobile-dropdown-content {
+        bottom: 100%;
+        left: 0;
+        margin-bottom: 5px;
+    }
+    
+    /* Show dropdown when active */
+    .mobile-dropdown-content.active {
+        display: flex;
+    }
+    
+    /* Mobile Dropdown Buttons */
+    .mobile-dropdown-content button {
+        background: linear-gradient(135deg, #1a0a0a 0%, #0a0a0a 100%);
+        border: 2px solid #8B0000;
+        border-radius: 8px;
+        padding: 12px 16px;
+        color: #8B0000;
+        font-family: 'Cinzel', serif;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        text-align: left;
+        box-shadow: 
+            0 0 15px rgba(139, 0, 0, 0.2),
+            inset 0 0 10px rgba(139, 0, 0, 0.1);
+        touch-action: manipulation;
+        min-height: 45px;
+    }
+    
+    .mobile-dropdown-content button:hover {
+        background: linear-gradient(135deg, #2a0a0a 0%, #1a0a0a 100%);
+        border-color: #DC143C;
+    }
+    
+    /* Mobile Upgrade Buttons */
+    .mobile-upgrade-category {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .mobile-upgrade-category .upgrade-name {
+        color: #8B0000;
+        font-size: 14px;
+        font-weight: 600;
+    }
+    
+    .mobile-upgrade-category .upgrade-price {
+        color: #DC143C;
         font-size: 16px;
-        min-height: 60px;
-        touch-action: manipulation;
+        font-weight: 700;
     }
     
-    .upgrade-name {
-        font-size: 18px;
+    /* Mobile Checkbox */
+    .mobile-checkbox-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 0;
     }
     
-    .upgrade-price {
-        font-size: 20px;
+    .mobile-checkbox-container input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        appearance: none;
+        border: 2px solid #8B0000;
+        border-radius: 4px;
+        background: linear-gradient(135deg, #1a0a0a 0%, #0a0a0a 100%);
+        cursor: pointer;
+        position: relative;
+    }
+    
+    .mobile-checkbox-container input[type="checkbox"]:checked {
+        background: linear-gradient(135deg, #DC143C 0%, #8B0000 100%);
+        border-color: #DC143C;
+    }
+    
+    .mobile-checkbox-container input[type="checkbox"]:checked::after {
+        content: '✓';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #FFD700;
+        font-weight: bold;
+        font-size: 12px;
+    }
+    
+    .mobile-checkbox-container label {
+        color: #DC143C;
+        font-family: 'Cinzel', serif;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
     }
     
     /* Prevent zoom on double tap */
     button,
-    .upgrade-category {
+    .mobile-dropdown-toggle,
+    .mobile-upgrade-category {
         touch-action: manipulation;
     }
-    
-    /* Larger checkbox for mobile */
-    .checkbox-container input[type="checkbox"] {
-        width: 24px;
-        height: 24px;
+}
+
+/* Hide mobile layout on desktop */
+@media (min-width: 769px) {
+    .mobile-layout {
+        display: none;
     }
     
-    .checkbox-container label {
-        font-size: 16px;
-    }
-    
-    /* Mobile-friendly tooltips */
-    .upgrade-category:hover::after {
-        display: none; /* Disable hover tooltips on mobile */
-    }
-    
-    /* Touch-friendly stats */
-    .stat {
-        padding: 15px 20px;
-        font-size: 18px;
-    }
-    
-    .money-display .stat {
-        font-size: 20px;
-    }
-    
-    /* Mobile-specific canvas cursor */
-    #gameCanvas {
-        cursor: pointer;
-        touch-action: none;
+    .desktop-layout {
+        display: flex;
     }
 }
 

@@ -1,6 +1,12 @@
 class TowerDefenseGame {
     constructor() {
-        this.canvas = document.getElementById('gameCanvas');
+        // Detect mobile device
+        this.isMobile = window.innerWidth <= 768;
+        
+        // Use appropriate canvas based on device
+        this.canvas = this.isMobile ? 
+            document.getElementById('gameCanvasMobile') : 
+            document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         this.gameState = {
             health: 100,
@@ -252,6 +258,8 @@ class TowerDefenseGame {
         
         // Prevent default touch behaviors on canvas
         const canvas = document.getElementById('gameCanvas');
+        const mobileCanvas = document.getElementById('gameCanvasMobile');
+        
         if (canvas) {
             canvas.addEventListener('touchstart', (e) => {
                 e.preventDefault();
@@ -265,6 +273,23 @@ class TowerDefenseGame {
                 e.preventDefault();
             }, { passive: false });
         }
+        
+        if (mobileCanvas) {
+            mobileCanvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+            
+            mobileCanvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+            
+            mobileCanvas.addEventListener('touchend', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+        }
+        
+        // Mobile dropdown functionality
+        this.setupMobileDropdowns();
         
         // Dev menu keyboard listener
         document.addEventListener('keydown', (e) => {
@@ -304,6 +329,142 @@ class TowerDefenseGame {
                 }
             }
         });
+    }
+    
+    
+    setupMobileDropdowns() {
+        // Mobile controls dropdown
+        const controlsToggle = document.getElementById('mobile-controls-toggle');
+        const controlsContent = document.getElementById('mobile-controls-content');
+        
+        if (controlsToggle && controlsContent) {
+            controlsToggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                controlsContent.classList.toggle('active');
+                // Close upgrades dropdown if open
+                const upgradesContent = document.getElementById('mobile-upgrades-content');
+                if (upgradesContent) {
+                    upgradesContent.classList.remove('active');
+                }
+            });
+            
+            controlsToggle.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                controlsContent.classList.toggle('active');
+                const upgradesContent = document.getElementById('mobile-upgrades-content');
+                if (upgradesContent) {
+                    upgradesContent.classList.remove('active');
+                }
+            }, { passive: false });
+        }
+        
+        // Mobile upgrades dropdown
+        const upgradesToggle = document.getElementById('mobile-upgrades-toggle');
+        const upgradesContent = document.getElementById('mobile-upgrades-content');
+        
+        if (upgradesToggle && upgradesContent) {
+            upgradesToggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                upgradesContent.classList.toggle('active');
+                // Close controls dropdown if open
+                if (controlsContent) {
+                    controlsContent.classList.remove('active');
+                }
+            });
+            
+            upgradesToggle.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                upgradesContent.classList.toggle('active');
+                if (controlsContent) {
+                    controlsContent.classList.remove('active');
+                }
+            }, { passive: false });
+        }
+        
+        // Mobile control buttons
+        const mobileStartWave = document.getElementById('mobile-start-wave');
+        const mobilePause = document.getElementById('mobile-pause-game');
+        const mobileHeal = document.getElementById('mobile-heal-base');
+        const mobileAutoStart = document.getElementById('mobile-auto-start');
+        
+        if (mobileStartWave) {
+            mobileStartWave.addEventListener('click', () => this.startWave());
+            mobileStartWave.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.startWave();
+            }, { passive: false });
+        }
+        
+        if (mobilePause) {
+            mobilePause.addEventListener('click', () => this.togglePause());
+            mobilePause.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.togglePause();
+            }, { passive: false });
+        }
+        
+        if (mobileHeal) {
+            mobileHeal.addEventListener('click', () => this.heal());
+            mobileHeal.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.heal();
+            }, { passive: false });
+        }
+        
+        if (mobileAutoStart) {
+            mobileAutoStart.addEventListener('change', (e) => {
+                this.autoStartRounds = e.target.checked;
+            });
+            mobileAutoStart.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                mobileAutoStart.checked = !mobileAutoStart.checked;
+                this.autoStartRounds = mobileAutoStart.checked;
+            }, { passive: false });
+        }
+        
+        // Mobile upgrade buttons - use event delegation
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.mobile-upgrade-category')) {
+                e.preventDefault();
+                e.stopPropagation();
+                const button = e.target.closest('.mobile-upgrade-category');
+                const category = button.dataset.category;
+                if (category) {
+                    this.upgradeCategory(category);
+                }
+            }
+        });
+        
+        document.addEventListener('touchstart', (e) => {
+            if (e.target.closest('.mobile-upgrade-category')) {
+                e.preventDefault();
+                e.stopPropagation();
+                const button = e.target.closest('.mobile-upgrade-category');
+                const category = button.dataset.category;
+                if (category) {
+                    this.upgradeCategory(category);
+                }
+            }
+        }, { passive: false });
+        
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.mobile-controls-dropdown') && !e.target.closest('.mobile-upgrades-dropdown')) {
+                if (controlsContent) controlsContent.classList.remove('active');
+                if (upgradesContent) upgradesContent.classList.remove('active');
+            }
+        });
+        
+        document.addEventListener('touchstart', (e) => {
+            if (!e.target.closest('.mobile-controls-dropdown') && !e.target.closest('.mobile-upgrades-dropdown')) {
+                if (controlsContent) controlsContent.classList.remove('active');
+                if (upgradesContent) upgradesContent.classList.remove('active');
+            }
+        }, { passive: false });
     }
     
     
@@ -554,21 +715,36 @@ class TowerDefenseGame {
     }
     
     updateUI() {
+        // Update desktop money display
         document.getElementById('money').textContent = '$' + this.gameState.money;
+        
+        // Update mobile money display
+        const mobileMoney = document.getElementById('mobile-money');
+        if (mobileMoney) {
+            mobileMoney.textContent = '$' + this.gameState.money;
+        }
         
         // Update start wave button text with wave number
         const startWaveBtn = document.getElementById('start-wave');
+        const mobileStartWaveBtn = document.getElementById('mobile-start-wave');
+        
         if (startWaveBtn) {
             startWaveBtn.textContent = `Start Wave ${this.gameState.wave}`;
         }
         
+        if (mobileStartWaveBtn) {
+            mobileStartWaveBtn.textContent = `Start Wave ${this.gameState.wave}`;
+        }
+        
         // Update heal button state
         const healBtn = document.getElementById('heal-base');
+        const mobileHealBtn = document.getElementById('mobile-heal-base');
+        
+        const canHeal = !this.gameState.gameRunning && 
+                       this.gameState.money >= this.healCost && 
+                       this.gameState.health < 100;
+        
         if (healBtn) {
-            const canHeal = !this.gameState.gameRunning && 
-                           this.gameState.money >= this.healCost && 
-                           this.gameState.health < 100;
-            
             healBtn.disabled = !canHeal;
             
             if (this.gameState.health >= 100) {
@@ -586,9 +762,24 @@ class TowerDefenseGame {
             }
         }
         
+        if (mobileHealBtn) {
+            mobileHealBtn.disabled = !canHeal;
+            
+            if (this.gameState.health >= 100) {
+                mobileHealBtn.textContent = 'Health Full';
+            } else if (this.gameState.gameRunning) {
+                mobileHealBtn.textContent = 'Heal Base ($50)';
+            } else if (this.gameState.money < this.healCost) {
+                mobileHealBtn.textContent = 'Heal Base ($50)';
+            } else {
+                mobileHealBtn.textContent = 'Heal Base ($50)';
+            }
+        }
+        
         // Update upgrade buttons with detailed info and prices
         Object.keys(this.upgradeCategories).forEach(category => {
             const button = document.getElementById(`upgrade-${category}`);
+            const mobileButton = document.getElementById(`mobile-upgrade-${category}`);
             const currentLevel = this.upgradeLevels[category];
             const categoryData = this.upgradeCategories[category];
             
@@ -627,6 +818,15 @@ class TowerDefenseGame {
                 `;
                 button.setAttribute('data-tooltip', `${upgradeDescription} - Cost: $${upgradeCost}`);
                 button.disabled = this.gameState.money < upgradeCost;
+                
+                // Update mobile button
+                if (mobileButton) {
+                    mobileButton.innerHTML = `
+                        <span class="upgrade-name">${categoryData.name}${levelText}</span>
+                        <span class="upgrade-price">$${upgradeCost}</span>
+                    `;
+                    mobileButton.disabled = this.gameState.money < upgradeCost;
+                }
             } else if (currentLevel < categoryData.upgrades.length) {
                 const upgrade = categoryData.upgrades[currentLevel];
                 
@@ -648,6 +848,15 @@ class TowerDefenseGame {
                 `;
                 button.setAttribute('data-tooltip', `${upgrade.description} - Cost: $${upgrade.cost}`);
                 button.disabled = this.gameState.money < upgrade.cost;
+                
+                // Update mobile button
+                if (mobileButton) {
+                    mobileButton.innerHTML = `
+                        <span class="upgrade-name">${displayName}</span>
+                        <span class="upgrade-price">$${upgrade.cost}</span>
+                    `;
+                    mobileButton.disabled = this.gameState.money < upgrade.cost;
+                }
             } else {
                 // Special handling for multishot MAX naming
                 let maxDisplayName = categoryData.name;
@@ -665,6 +874,15 @@ class TowerDefenseGame {
                 `;
                 button.setAttribute('data-tooltip', 'Maximum level reached');
                 button.disabled = true;
+                
+                // Update mobile button
+                if (mobileButton) {
+                    mobileButton.innerHTML = `
+                        <span class="upgrade-name">${maxDisplayName}</span>
+                        <span class="upgrade-price">MAX</span>
+                    `;
+                    mobileButton.disabled = true;
+                }
             }
         });
     }
