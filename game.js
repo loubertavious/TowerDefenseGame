@@ -2,12 +2,6 @@ class TowerDefenseGame {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
-        
-        // Set up responsive canvas sizing
-        this.setupResponsiveCanvas();
-        
-        // Detect mobile device
-        this.isMobile = this.detectMobile();
         this.gameState = {
             health: 100,
             money: 500,
@@ -165,59 +159,6 @@ class TowerDefenseGame {
         this.init();
     }
     
-    setupResponsiveCanvas() {
-        // Set initial canvas size
-        this.resizeCanvas();
-        
-        // Add resize event listener
-        window.addEventListener('resize', () => {
-            this.resizeCanvas();
-        });
-        
-        // Add orientation change listener for mobile
-        window.addEventListener('orientationchange', () => {
-            setTimeout(() => {
-                this.resizeCanvas();
-            }, 100);
-        });
-    }
-    
-    resizeCanvas() {
-        const container = this.canvas.parentElement;
-        const containerRect = container.getBoundingClientRect();
-        
-        // Calculate available space (accounting for side panels)
-        const availableWidth = Math.min(window.innerWidth - 200, 800); // Min 200px for side panels
-        const availableHeight = Math.min(window.innerHeight - 100, 600); // Min 100px for margins
-        
-        // Set canvas size
-        this.canvas.width = availableWidth;
-        this.canvas.height = availableHeight;
-        
-        // Update base position to center
-        this.base.x = this.canvas.width / 2;
-        this.base.y = this.canvas.height / 2;
-        
-        // Update tower position if it exists
-        if (this.tower) {
-            this.tower.x = this.base.x;
-            this.tower.y = this.base.y;
-        }
-        
-        console.log(`Canvas resized to: ${this.canvas.width}x${this.canvas.height}`);
-    }
-    
-    detectMobile() {
-        // Check for mobile device indicators
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                        ('ontouchstart' in window) ||
-                        (navigator.maxTouchPoints > 0) ||
-                        window.innerWidth <= 768;
-        
-        console.log('Mobile device detected:', isMobile);
-        return isMobile;
-    }
-    
     init() {
         // Create initial tower
         this.tower = new Tower(this.base.x, this.base.y, this.towerStats);
@@ -249,18 +190,6 @@ class TowerDefenseGame {
             }
         });
         
-        // Add touch support for mobile devices
-        document.addEventListener('touchstart', (e) => {
-            if (e.target.closest('.upgrade-category')) {
-                e.preventDefault();
-                e.stopPropagation();
-                const button = e.target.closest('.upgrade-category');
-                const category = button.dataset.category;
-                console.log('Upgrade button touched via delegation:', category);
-                this.upgradeCategory(category);
-            }
-        });
-        
         // Game controls
         const startWaveBtn = document.getElementById('start-wave');
         const pauseBtn = document.getElementById('pause-game');
@@ -270,28 +199,16 @@ class TowerDefenseGame {
             startWaveBtn.addEventListener('click', () => {
                 this.startWave();
             });
-            startWaveBtn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                this.startWave();
-            });
         }
         
         if (pauseBtn) {
             pauseBtn.addEventListener('click', () => {
                 this.togglePause();
             });
-            pauseBtn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                this.togglePause();
-            });
         }
         
         if (healBtn) {
             healBtn.addEventListener('click', () => {
-                this.heal();
-            });
-            healBtn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
                 this.heal();
             });
         }
@@ -709,13 +626,7 @@ class TowerDefenseGame {
             this.update();
         }
         this.render();
-        
-        // Optimize frame rate for mobile devices
-        if (this.isMobile) {
-            setTimeout(() => requestAnimationFrame(() => this.gameLoop()), 16); // ~60fps
-        } else {
-            requestAnimationFrame(() => this.gameLoop());
-        }
+        requestAnimationFrame(() => this.gameLoop());
     }
     
     update() {
@@ -1249,7 +1160,6 @@ class TowerDefenseGame {
         // Enable click-to-restart
         const handleRestart = () => {
             document.removeEventListener('click', handleRestart);
-            document.removeEventListener('touchstart', handleRestart);
             document.removeEventListener('keydown', handleKeyRestart);
             this.resetGame();
         };
@@ -1258,7 +1168,6 @@ class TowerDefenseGame {
             if (e.key === ' ') {
                 e.preventDefault();
                 document.removeEventListener('click', handleRestart);
-                document.removeEventListener('touchstart', handleRestart);
                 document.removeEventListener('keydown', handleKeyRestart);
                 this.resetGame();
             }
@@ -1266,7 +1175,6 @@ class TowerDefenseGame {
         
         setTimeout(() => {
             document.addEventListener('click', handleRestart);
-            document.addEventListener('touchstart', handleRestart);
             document.addEventListener('keydown', handleKeyRestart);
         }, 200); // small delay to avoid accidental immediate restart
     }
