@@ -1,65 +1,52 @@
 # Multi-Upgrade Tower Defense Game
 
-A fun and engaging 2D tower defense game built with HTML5 Canvas and JavaScript. Defend your central base with a single tower that can be upgraded in multiple different ways!
+## Land Acknowledgement
 
-## How to Play
+We acknowledge that this project was developed on the traditional and unceded territory of the Algonquin Anishinaabe people. The Algonquin people have lived on and cared for this land for thousands of years, and we recognize their ongoing connection to this territory. We are grateful for the opportunity to work, learn, and create on this land, and we commit to respecting the land and its original caretakers.
 
-1. **Start the Game**: Open `index.html` in your web browser
-2. **Choose Your Upgrades**: Select from 7 different upgrade categories to customize your tower
-3. **Start Waves**: Click "Start Wave" to begin spawning enemies
-4. **Defend**: Watch your tower automatically target and shoot enemies approaching from all sides
-5. **Survive**: Prevent enemies from reaching your central base!
+We encourage everyone to learn more about the Algonquin people, their history, culture, and ongoing contributions to our communities. For more information, please visit [Algonquins of Ontario](https://www.tanakiwin.com/) and [Algonquin College's Indigenous Initiatives](https://www.algonquincollege.com/indigenous/).
 
-## Game Features
+---
 
-- **Single Customizable Tower**: One tower with multiple upgrade paths
-- **7 Upgrade Categories**: Choose how to specialize your tower
-- **Smart Targeting**: Tower automatically targets the closest enemy in range
-- **Visual Effects**: Particle explosions, shadows, and smooth animations
-- **Progressive Difficulty**: Each wave spawns more enemies
-- **Resource Management**: Earn money by defeating enemies, spend strategically on upgrades
-- **Health System**: Lose health when enemies reach your base
-- **Pause Function**: Pause/resume the game at any time
+## About This Game
 
-## Upgrade Categories
+A DOOM-themed tower defense game featuring multiple upgrade paths, different enemy movement patterns, and strategic gameplay mechanics.
 
-### **Tower Upgrades** (5 levels each)
-- **Damage** ($50-$800): Increase projectile damage by 15-50 points
-- **Range** ($50-$800): Extend tower's targeting range by 20-50 pixels
-- **Fire Rate** ($50-$800): Reduce firing delay by 100-300 milliseconds
+### Features
+- Multiple upgrade categories (Hellfire, Vision, Fury, Velocity, Multishot, Force, Magnitude, Pierce)
+- Different enemy movement types (straight, zigzag, orbital)
+- Satellite eyes for multishot capability
+- Screen shake and visual effects
+- Progressive difficulty scaling
 
-## Controls
+### How to Play
+1. Open `index.html` in your web browser
+2. Click "Start Wave" to begin
+3. Use money to upgrade your tower's capabilities
+4. Survive as many waves as possible!
 
-- **Upgrade Buttons**: Click any upgrade category to improve that specific stat
-- **Tooltips**: Hover over upgrade buttons to see detailed information
-- **Start Wave Button**: Begin spawning enemies
-- **Pause Button**: Pause/resume the game
+### Controls
+- **Start Wave**: Begin the next enemy wave
+- **Pause**: Pause/unpause the game
+- **Auto Start**: Automatically start waves when ready
+- **Upgrades**: Click upgrade buttons to enhance your tower
 
-## Game Mechanics
+### Upgrade Categories
+- **Hellfire**: Increases damage
+- **Vision**: Increases range
+- **Fury**: Increases fire rate
+- **Velocity**: Increases bullet speed
+- **Multishot**: Adds satellite eyes
+- **Force**: Increases knockback
+- **Magnitude**: Increases bullet size and area of effect
+- **Pierce**: Allows bullets to hit multiple enemies
 
-- **Enemies**: Spawn from random edges and move directly toward your central base
-- **Tower**: Automatically targets and shoots enemies within range
-- **Money**: Earn money by defeating enemies, spend on strategic upgrades
-- **Health**: Lose health when enemies reach your base (shown as shrinking base)
-- **Waves**: Each wave increases the number of enemies spawned
-- **Strategic Choices**: Balance different upgrade paths based on enemy patterns and available money
+### Technical Details
+- Built with HTML5 Canvas and JavaScript
+- Object-oriented design with classes for Tower, Enemy, and Projectile
+- Real-time collision detection and physics simulation
+- Responsive UI with tooltips and visual feedback
 
-## Game Interface
+---
 
-- **Left Panel**: Game stats and controls
-  - **Game Stats**: Health, money, wave, and enemy count
-  - **Game Controls**: Start wave and pause buttons
-- **Center**: Game canvas where the action happens
-- **Right Panel**: Tower upgrades and shop
-  - **Tower Shop**: Simple upgrade system with clear pricing
-  - **Basic Stats**: Damage, range, and fire rate upgrades
-  - **Clear Pricing**: All upgrade costs displayed prominently
-- **Responsive Design**: Adapts to different screen sizes
-
-## File Structure
-
-- `index.html` - Main HTML file with game interface
-- `style.css` - CSS styling for the game UI
-- `game.js` - Complete game logic and classes
-
-Enjoy defending your base!
+*This game was created as a learning project and is inspired by classic tower defense games with a DOOM aesthetic.*

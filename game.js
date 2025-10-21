@@ -62,6 +62,7 @@ class TowerDefenseGame {
             bulletSpeed: 5,
             knockback: 0, // Knockback force
             bulletSize: 1, // Bullet size multiplier
+            pierce: 1, // Pierce level
             color: '#8B0000', // Dark red
             size: 15
         };
@@ -132,6 +133,14 @@ class TowerDefenseGame {
                 baseEffect: 0.5, // Increased from 0.3
                 costMultiplier: 2.0,
                 effectMultiplier: 1.3 // Increased from 1.2
+            },
+            pierce: {
+                name: "Pierce",
+                infinite: true,
+                baseCost: 200,
+                baseEffect: 1,
+                costMultiplier: 1.8,
+                effectMultiplier: 1.0
             }
         };
         
@@ -143,7 +152,8 @@ class TowerDefenseGame {
             bulletSpeed: 0,
             multishot: 0,
             knockback: 0,
-            bulletSize: 0
+            bulletSize: 0,
+            pierce: 0
         };
         
         this.init();
@@ -401,6 +411,9 @@ class TowerDefenseGame {
             case 'bulletSize':
                 this.towerStats.bulletSize += effect;
                 break;
+            case 'pierce':
+                this.towerStats.pierce += effect;
+                break;
         }
         
         // Update tower with new stats
@@ -553,6 +566,8 @@ class TowerDefenseGame {
                     upgradeDescription = `+${upgradeEffect} Knockback Force`;
                 } else if (category === 'bulletSize') {
                     upgradeDescription = `+${upgradeEffect} Bullet Size`;
+                } else if (category === 'pierce') {
+                    upgradeDescription = `+${upgradeEffect} Pierce`;
                 }
                 
                 const levelText = currentLevel > 0 ? ` (Lv.${currentLevel + 1})` : '';
@@ -1181,6 +1196,7 @@ class TowerDefenseGame {
             bulletSpeed: 5,
             knockback: 0,
             bulletSize: 1,
+            pierce: 1,
             color: '#8B0000',
             size: 15
         };
@@ -1974,7 +1990,7 @@ class Projectile {
         this.accuracy = accuracy; // 1.0 = perfect accuracy, 0.0 = completely random
         this.towerData = towerData; // Store tower data for color calculation
         this.shouldRemove = false;
-        this.hitsRemaining = 1; // Default: single hit
+        this.hitsRemaining = 1; // Default: single hit, will be modified by pierce upgrades
         
         // Calculate projectile color based on upgrades
         this.color = this.calculateProjectileColor();
@@ -1982,6 +1998,7 @@ class Projectile {
         // Calculate bullet size and piercing capability
         this.size = this.calculateBulletSize();
         this.piercing = this.calculatePiercing();
+        this.hitsRemaining = this.piercing; // Set hits remaining based on pierce level
         
         // Calculate direction with accuracy-based randomness
         const dx = target.x - x;
@@ -2004,8 +2021,8 @@ class Projectile {
     
     calculatePiercing() {
         if (!this.towerData) return 1;
-        // Larger bullets can pierce through more enemies - enhanced scaling
-        return Math.max(1, Math.floor(this.towerData.bulletSize * 3));
+        // Pierce level based on pierce upgrade
+        return Math.max(1, Math.floor(this.towerData.pierce));
     }
     
     calculateProjectileColor() {
@@ -2057,32 +2074,53 @@ class Projectile {
         this.x += this.vx;
         this.y += this.vy;
         
-        // Check collision with all enemies for piercing
+        // Check collision with all enemies for multi-target hitting and piercing
         if (gameInstance && gameInstance.enemies) {
+            const hitEnemies = [];
+            
             gameInstance.enemies.forEach((enemy, enemyIndex) => {
                 const distance = Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2);
                 const collisionRadius = 10 + (this.size - 1) * 8; // Enhanced collision radius scaling
                 
-                if (distance < collisionRadius && this.hitsRemaining > 0) {
+                if (distance < collisionRadius) {
+                    hitEnemies.push({ enemy, enemyIndex });
+                }
+            });
+            
+            // Hit enemies based on pierce level
+            if (hitEnemies.length > 0 && this.hitsRemaining > 0) {
+                // Sort enemies by distance to prioritize closest hits
+                hitEnemies.sort((a, b) => {
+                    const distA = Math.sqrt((this.x - a.enemy.x) ** 2 + (this.y - a.enemy.y) ** 2);
+                    const distB = Math.sqrt((this.x - b.enemy.x) ** 2 + (this.y - b.enemy.y) ** 2);
+                    return distA - distB;
+                });
+                
+                // Hit up to hitsRemaining enemies
+                const enemiesToHit = hitEnemies.slice(0, this.hitsRemaining);
+                
+                enemiesToHit.forEach(({ enemy, enemyIndex }) => {
                     enemy.health -= this.damage;
-                    this.hitsRemaining--;
                     
                     // Apply knockback if game instance provided
                     if (gameInstance.tower && gameInstance.tower.data.knockback > 0) {
                         enemy.applyKnockback(gameInstance.tower.data.knockback, gameInstance.tower.x, gameInstance.tower.y);
                     }
-                    
-                    // Screen shake for projectile hit
-                    if (gameInstance) {
-                        gameInstance.addScreenShake(2, 50);
-                    }
-                    
-                    // Remove projectile if no hits remaining
-                    if (this.hitsRemaining <= 0) {
-                        this.shouldRemove = true;
-                    }
+                });
+                
+                // Reduce hits remaining
+                this.hitsRemaining -= enemiesToHit.length;
+                
+                // Screen shake for projectile hit (scaled by number of enemies hit)
+                if (gameInstance) {
+                    gameInstance.addScreenShake(2 + enemiesToHit.length, 50);
                 }
-            });
+                
+                // Remove projectile if no hits remaining
+                if (this.hitsRemaining <= 0) {
+                    this.shouldRemove = true;
+                }
+            }
         }
         
         // Remove if out of bounds
@@ -2129,7 +2167,7 @@ class SmallProjectile {
         this.accuracy = accuracy;
         this.towerData = towerData; // Store tower data for color calculation
         this.shouldRemove = false;
-        this.hitsRemaining = 1; // Default: single hit
+        this.hitsRemaining = 1; // Default: single hit, will be modified by pierce upgrades
         
         // Calculate projectile color based on upgrades (smaller version)
         this.color = this.calculateSmallProjectileColor();
@@ -2159,8 +2197,8 @@ class SmallProjectile {
     
     calculateSmallPiercing() {
         if (!this.towerData) return 1;
-        // Smaller bullets pierce less than main bullets - enhanced scaling
-        return Math.max(1, Math.floor(this.towerData.bulletSize * 2.5));
+        // Pierce level based on pierce upgrade (smaller bullets pierce less)
+        return Math.max(1, Math.floor(this.towerData.pierce * 0.7));
     }
     
     calculateSmallProjectileColor() {
@@ -2209,32 +2247,53 @@ class SmallProjectile {
         this.x += this.vx;
         this.y += this.vy;
         
-        // Check collision with all enemies for piercing
+        // Check collision with all enemies for multi-target hitting and piercing
         if (gameInstance && gameInstance.enemies) {
+            const hitEnemies = [];
+            
             gameInstance.enemies.forEach((enemy, enemyIndex) => {
                 const distance = Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2);
                 const collisionRadius = 10 + (this.size - 1) * 8; // Enhanced collision radius scaling
                 
-                if (distance < collisionRadius && this.hitsRemaining > 0) {
+                if (distance < collisionRadius) {
+                    hitEnemies.push({ enemy, enemyIndex });
+                }
+            });
+            
+            // Hit enemies based on pierce level
+            if (hitEnemies.length > 0 && this.hitsRemaining > 0) {
+                // Sort enemies by distance to prioritize closest hits
+                hitEnemies.sort((a, b) => {
+                    const distA = Math.sqrt((this.x - a.enemy.x) ** 2 + (this.y - a.enemy.y) ** 2);
+                    const distB = Math.sqrt((this.x - b.enemy.x) ** 2 + (this.y - b.enemy.y) ** 2);
+                    return distA - distB;
+                });
+                
+                // Hit up to hitsRemaining enemies
+                const enemiesToHit = hitEnemies.slice(0, this.hitsRemaining);
+                
+                enemiesToHit.forEach(({ enemy, enemyIndex }) => {
                     enemy.health -= this.damage;
-                    this.hitsRemaining--;
                     
                     // Apply knockback if game instance provided
                     if (gameInstance.tower && gameInstance.tower.data.knockback > 0) {
                         enemy.applyKnockback(gameInstance.tower.data.knockback, gameInstance.tower.x, gameInstance.tower.y);
                     }
-                    
-                    // Screen shake for projectile hit
-                    if (gameInstance) {
-                        gameInstance.addScreenShake(2, 50);
-                    }
-                    
-                    // Remove projectile if no hits remaining
-                    if (this.hitsRemaining <= 0) {
-                        this.shouldRemove = true;
-                    }
+                });
+                
+                // Reduce hits remaining
+                this.hitsRemaining -= enemiesToHit.length;
+                
+                // Screen shake for projectile hit (scaled by number of enemies hit)
+                if (gameInstance) {
+                    gameInstance.addScreenShake(2 + enemiesToHit.length, 50);
                 }
-            });
+                
+                // Remove projectile if no hits remaining
+                if (this.hitsRemaining <= 0) {
+                    this.shouldRemove = true;
+                }
+            }
         }
         
         // Remove if out of bounds
@@ -2282,6 +2341,7 @@ class Particle {
         this.decay = 0.02;
         this.size = Math.random() * 3 + 1;
         this.shouldRemove = false;
+        this.hitsRemaining = 1; // Default: single hit, will be modified by pierce upgrades
     }
     
     update() {
