@@ -129,9 +129,9 @@ class TowerDefenseGame {
                 name: "Magnitude",
                 infinite: true,
                 baseCost: 150,
-                baseEffect: 0.3,
+                baseEffect: 0.5, // Increased from 0.3
                 costMultiplier: 2.0,
-                effectMultiplier: 1.2
+                effectMultiplier: 1.3 // Increased from 1.2
             }
         };
         
@@ -534,7 +534,13 @@ class TowerDefenseGame {
             if (categoryData.infinite) {
                 // Handle infinite upgrades
                 const upgradeCost = Math.floor(categoryData.baseCost * Math.pow(categoryData.costMultiplier, currentLevel));
-                const upgradeEffect = Math.floor(categoryData.baseEffect * Math.pow(categoryData.effectMultiplier, currentLevel));
+                let upgradeEffect;
+                if (category === 'bulletSize') {
+                    // Don't floor bullet size - keep decimal values
+                    upgradeEffect = (categoryData.baseEffect * Math.pow(categoryData.effectMultiplier, currentLevel)).toFixed(1);
+                } else {
+                    upgradeEffect = Math.floor(categoryData.baseEffect * Math.pow(categoryData.effectMultiplier, currentLevel));
+                }
                 
                 let upgradeDescription;
                 if (category === 'damage') {
@@ -543,6 +549,10 @@ class TowerDefenseGame {
                     upgradeDescription = `${upgradeEffect}ms Fury Speed`;
                 } else if (category === 'bulletSpeed') {
                     upgradeDescription = `+${upgradeEffect} Bullet Speed`;
+                } else if (category === 'knockback') {
+                    upgradeDescription = `+${upgradeEffect} Knockback Force`;
+                } else if (category === 'bulletSize') {
+                    upgradeDescription = `+${upgradeEffect} Bullet Size`;
                 }
                 
                 const levelText = currentLevel > 0 ? ` (Lv.${currentLevel + 1})` : '';
@@ -814,19 +824,64 @@ class TowerDefenseGame {
     
     drawGameOverOverlay() {
         this.ctx.save();
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        
+        // Draw dark overlay with pulsing effect
+        const pulseIntensity = Math.sin(Date.now() * 0.005) * 0.1 + 0.8;
+        this.ctx.fillStyle = `rgba(0, 0, 0, ${pulseIntensity})`;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        this.ctx.fillStyle = '#FF4444';
-        this.ctx.font = 'bold 48px Arial';
+        // Draw hellfire border effect
+        this.ctx.strokeStyle = '#8B0000';
+        this.ctx.lineWidth = 8;
+        this.ctx.strokeRect(20, 20, this.canvas.width - 40, this.canvas.height - 40);
+        
+        // Draw inner border
+        this.ctx.strokeStyle = '#FF4500';
+        this.ctx.lineWidth = 4;
+        this.ctx.strokeRect(30, 30, this.canvas.width - 60, this.canvas.height - 60);
+        
+        // Draw "GAME OVER" text with hellfire effect
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.font = 'bold 64px Cinzel, serif';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('GAME OVER', this.canvas.width / 2, this.canvas.height / 2 - 50);
+        this.ctx.textBaseline = 'middle';
         
+        // Text shadow for depth
+        this.ctx.shadowColor = '#8B0000';
+        this.ctx.shadowBlur = 20;
+        this.ctx.shadowOffsetX = 4;
+        this.ctx.shadowOffsetY = 4;
+        
+        this.ctx.fillText('GAME OVER', this.canvas.width / 2, this.canvas.height / 2 - 80);
+        
+        // Draw wave survived text
+        this.ctx.font = 'bold 32px Cinzel, serif';
+        this.ctx.fillStyle = '#FFD700';
+        this.ctx.shadowBlur = 10;
+        this.ctx.shadowOffsetX = 2;
+        this.ctx.shadowOffsetY = 2;
+        this.ctx.fillText(`Waves Survived: ${this.gameState.wave - 1}`, this.canvas.width / 2, this.canvas.height / 2 - 20);
+        
+        // Draw final score
+        this.ctx.font = 'bold 24px Cinzel, serif';
         this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = '24px Arial';
-        this.ctx.fillText(`Waves Survived: ${this.gameState.wave - 1}`, this.canvas.width / 2, this.canvas.height / 2 + 20);
+        this.ctx.shadowBlur = 5;
+        this.ctx.shadowOffsetX = 1;
+        this.ctx.shadowOffsetY = 1;
+        this.ctx.fillText(`Final Money: $${this.gameState.money}`, this.canvas.width / 2, this.canvas.height / 2 + 20);
         
-        this.ctx.fillText('Click to restart', this.canvas.width / 2, this.canvas.height / 2 + 60);
+        // Draw restart instruction
+        this.ctx.font = 'bold 20px Cinzel, serif';
+        this.ctx.fillStyle = '#00FF00';
+        this.ctx.shadowBlur = 5;
+        this.ctx.fillText('Click anywhere to restart', this.canvas.width / 2, this.canvas.height / 2 + 80);
+        
+        // Draw additional instruction
+        this.ctx.font = '16px Cinzel, serif';
+        this.ctx.fillStyle = '#CCCCCC';
+        this.ctx.shadowBlur = 3;
+        this.ctx.fillText('Press SPACE to restart', this.canvas.width / 2, this.canvas.height / 2 + 110);
+        
         this.ctx.restore();
     }
     
@@ -1090,13 +1145,25 @@ class TowerDefenseGame {
         // Enable click-to-restart
         const handleRestart = () => {
             document.removeEventListener('click', handleRestart);
+            document.removeEventListener('keydown', handleKeyRestart);
             this.resetGame();
         };
+        
+        const handleKeyRestart = (e) => {
+            if (e.key === ' ') {
+                e.preventDefault();
+                document.removeEventListener('click', handleRestart);
+                document.removeEventListener('keydown', handleKeyRestart);
+                this.resetGame();
+            }
+        };
+        
         setTimeout(() => {
             document.addEventListener('click', handleRestart);
+            document.addEventListener('keydown', handleKeyRestart);
         }, 200); // small delay to avoid accidental immediate restart
     }
-
+    
     resetGame() {
         // Reset game state
         this.gameState.isGameOver = false;
@@ -1937,8 +2004,8 @@ class Projectile {
     
     calculatePiercing() {
         if (!this.towerData) return 1;
-        // Larger bullets can pierce through more enemies
-        return Math.max(1, Math.floor(this.towerData.bulletSize * 2));
+        // Larger bullets can pierce through more enemies - enhanced scaling
+        return Math.max(1, Math.floor(this.towerData.bulletSize * 3));
     }
     
     calculateProjectileColor() {
@@ -1994,7 +2061,7 @@ class Projectile {
         if (gameInstance && gameInstance.enemies) {
             gameInstance.enemies.forEach((enemy, enemyIndex) => {
                 const distance = Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2);
-                const collisionRadius = 10 + (this.size - 1) * 5; // Larger bullets have bigger collision radius
+                const collisionRadius = 10 + (this.size - 1) * 8; // Enhanced collision radius scaling
                 
                 if (distance < collisionRadius && this.hitsRemaining > 0) {
                     enemy.health -= this.damage;
@@ -2027,7 +2094,7 @@ class Projectile {
     render(ctx) {
         // Draw hellfire projectile trail with dynamic color
         ctx.strokeStyle = this.color;
-        ctx.lineWidth = 3 * this.size; // Scale line width with bullet size
+        ctx.lineWidth = 4 * this.size; // Increased from 3 // Scale line width with bullet size
         ctx.globalAlpha = 0.8;
         ctx.beginPath();
         ctx.moveTo(this.x - this.vx * 3, this.y - this.vy * 3);
@@ -2038,13 +2105,13 @@ class Projectile {
         ctx.fillStyle = this.color;
         ctx.globalAlpha = 0.4;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, 7 * this.size, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, 10 * this.size, 0, Math.PI * 2); // Increased from 7
         ctx.fill();
         
         // Draw hellfire core with dynamic size
         ctx.fillStyle = '#FFD700';
         ctx.beginPath();
-        ctx.arc(this.x, this.y, 3 * this.size, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, 5 * this.size, 0, Math.PI * 2); // Increased from 3
         ctx.fill();
         
         ctx.globalAlpha = 1;
@@ -2092,8 +2159,8 @@ class SmallProjectile {
     
     calculateSmallPiercing() {
         if (!this.towerData) return 1;
-        // Smaller bullets pierce less than main bullets
-        return Math.max(1, Math.floor(this.towerData.bulletSize * 1.5));
+        // Smaller bullets pierce less than main bullets - enhanced scaling
+        return Math.max(1, Math.floor(this.towerData.bulletSize * 2.5));
     }
     
     calculateSmallProjectileColor() {
@@ -2146,7 +2213,7 @@ class SmallProjectile {
         if (gameInstance && gameInstance.enemies) {
             gameInstance.enemies.forEach((enemy, enemyIndex) => {
                 const distance = Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2);
-                const collisionRadius = 10 + (this.size - 1) * 5; // Larger bullets have bigger collision radius
+                const collisionRadius = 10 + (this.size - 1) * 8; // Enhanced collision radius scaling
                 
                 if (distance < collisionRadius && this.hitsRemaining > 0) {
                     enemy.health -= this.damage;
@@ -2179,7 +2246,7 @@ class SmallProjectile {
     render(ctx) {
         // Draw smaller hellfire projectile trail with dynamic color
         ctx.strokeStyle = this.color;
-        ctx.lineWidth = 2 * this.size; // Scale line width with bullet size
+        ctx.lineWidth = 3 * this.size; // Increased from 2 // Scale line width with bullet size
         ctx.globalAlpha = 0.6;
         ctx.beginPath();
         ctx.moveTo(this.x - this.vx * 2, this.y - this.vy * 2);
@@ -2190,13 +2257,13 @@ class SmallProjectile {
         ctx.fillStyle = this.color;
         ctx.globalAlpha = 0.3;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, 4 * this.size, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, 6 * this.size, 0, Math.PI * 2); // Increased from 4
         ctx.fill();
         
         // Draw smaller hellfire core with dynamic size
         ctx.fillStyle = '#FFD700';
         ctx.beginPath();
-        ctx.arc(this.x, this.y, 2 * this.size, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, 3 * this.size, 0, Math.PI * 2); // Increased from 2
         ctx.fill();
         
         ctx.globalAlpha = 1;
