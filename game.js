@@ -190,6 +190,18 @@ class TowerDefenseGame {
             }
         });
         
+        // Add touch event support for mobile devices
+        document.addEventListener('touchstart', (e) => {
+            if (e.target.closest('.upgrade-category')) {
+                e.preventDefault();
+                e.stopPropagation();
+                const button = e.target.closest('.upgrade-category');
+                const category = button.dataset.category;
+                console.log('Upgrade button touched via delegation:', category);
+                this.upgradeCategory(category);
+            }
+        }, { passive: false });
+        
         // Game controls
         const startWaveBtn = document.getElementById('start-wave');
         const pauseBtn = document.getElementById('pause-game');
@@ -199,18 +211,30 @@ class TowerDefenseGame {
             startWaveBtn.addEventListener('click', () => {
                 this.startWave();
             });
+            startWaveBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.startWave();
+            }, { passive: false });
         }
         
         if (pauseBtn) {
             pauseBtn.addEventListener('click', () => {
                 this.togglePause();
             });
+            pauseBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.togglePause();
+            }, { passive: false });
         }
         
         if (healBtn) {
             healBtn.addEventListener('click', () => {
                 this.heal();
             });
+            healBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.heal();
+            }, { passive: false });
         }
         
         // Auto-start checkbox listener
@@ -219,6 +243,27 @@ class TowerDefenseGame {
             autoStartCheckbox.addEventListener('change', (e) => {
                 this.autoStartRounds = e.target.checked;
             });
+            autoStartCheckbox.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                autoStartCheckbox.checked = !autoStartCheckbox.checked;
+                this.autoStartRounds = autoStartCheckbox.checked;
+            }, { passive: false });
+        }
+        
+        // Prevent default touch behaviors on canvas
+        const canvas = document.getElementById('gameCanvas');
+        if (canvas) {
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+            
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+            
+            canvas.addEventListener('touchend', (e) => {
+                e.preventDefault();
+            }, { passive: false });
         }
         
         // Dev menu keyboard listener
@@ -423,6 +468,9 @@ class TowerDefenseGame {
         if (category === 'multishot') {
             this.tower.updateSatelliteEyes(this.upgradeLevels.multishot);
         }
+        
+        // Update all satellite eyes with new tower stats
+        this.tower.updateSatelliteEyeStats(this.towerStats);
     }
     
     
@@ -1282,6 +1330,13 @@ class Tower {
             const radius = 40; // Distance from main tower
             eye.x = this.x + Math.cos(angle) * radius;
             eye.y = this.y + Math.sin(angle) * radius;
+        });
+    }
+    
+    updateSatelliteEyeStats(newStats) {
+        // Update all existing satellite eyes with new tower stats
+        this.satelliteEyes.forEach(eye => {
+            eye.towerData = {...newStats};
         });
     }
     

@@ -516,8 +516,127 @@ button:disabled {
     animation: glow 2s ease-in-out infinite;
 }
 
-/* Responsive design */
-@media (max-width: 1200px) {
+/* Mobile and Touch Support */
+@media (max-width: 768px) {
+    body {
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .game-container {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+        padding: 5px;
+        gap: 5px;
+    }
+    
+    .left-panel,
+    .right-panel {
+        width: 100%;
+        padding: 10px;
+        flex-direction: column;
+        max-height: none;
+    }
+    
+    .left-panel {
+        order: 1;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-around;
+        align-items: flex-start;
+    }
+    
+    .money-display {
+        flex: 1;
+        min-width: 120px;
+        margin-right: 10px;
+    }
+    
+    .controls {
+        flex: 1;
+        min-width: 200px;
+    }
+    
+    #gameCanvas {
+        order: 2;
+        width: 100%;
+        max-width: 100vw;
+        height: 50vh;
+        min-height: 300px;
+        margin: 5px 0;
+        border-width: 2px;
+    }
+    
+    .right-panel {
+        order: 3;
+        max-height: 40vh;
+        overflow-y: auto;
+    }
+    
+    /* Larger touch targets for mobile */
+    button {
+        padding: 15px 20px;
+        font-size: 18px;
+        min-height: 50px;
+        touch-action: manipulation;
+    }
+    
+    .upgrade-category {
+        padding: 15px 20px;
+        font-size: 16px;
+        min-height: 60px;
+        touch-action: manipulation;
+    }
+    
+    .upgrade-name {
+        font-size: 18px;
+    }
+    
+    .upgrade-price {
+        font-size: 20px;
+    }
+    
+    /* Prevent zoom on double tap */
+    button,
+    .upgrade-category {
+        touch-action: manipulation;
+    }
+    
+    /* Larger checkbox for mobile */
+    .checkbox-container input[type="checkbox"] {
+        width: 24px;
+        height: 24px;
+    }
+    
+    .checkbox-container label {
+        font-size: 16px;
+    }
+    
+    /* Mobile-friendly tooltips */
+    .upgrade-category:hover::after {
+        display: none; /* Disable hover tooltips on mobile */
+    }
+    
+    /* Touch-friendly stats */
+    .stat {
+        padding: 15px 20px;
+        font-size: 18px;
+    }
+    
+    .money-display .stat {
+        font-size: 20px;
+    }
+    
+    /* Mobile-specific canvas cursor */
+    #gameCanvas {
+        cursor: pointer;
+        touch-action: none;
+    }
+}
+
+/* Tablet support */
+@media (max-width: 1200px) and (min-width: 769px) {
     .game-container {
         flex-direction: column;
         height: auto;
@@ -546,7 +665,7 @@ button:disabled {
     }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 900px) and (min-width: 769px) {
     .game-container {
         padding: 5px;
     }
