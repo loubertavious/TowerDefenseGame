@@ -2,170 +2,94 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tower Defense Game</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="game-container">
-        <!-- Desktop Layout -->
-        <div class="desktop-layout">
-            <!-- Left Panel - Controls -->
-            <div class="left-panel">
-                <div class="money-display">
-                    <div class="stat">
-                        <span class="label">Money:</span>
-                        <span id="money">$500</span>
-                    </div>
-                </div>
-                
-                <div class="controls">
-                    <h3>Game Controls</h3>
-                    <button id="start-wave">Start Wave</button>
-                    <button id="pause-game">Pause</button>
-                    <div class="checkbox-container">
-                        <input type="checkbox" id="auto-start" />
-                        <label for="auto-start">Auto Start Rounds</label>
-                    </div>
-                    
-                    <!-- Heal System -->
-                    <div class="heal-section">
-                        <button id="heal-base">Heal Base ($50)</button>
-                    </div>
+        <!-- Left Panel - Controls -->
+        <div class="left-panel">
+            <div class="money-display">
+                <div class="stat">
+                    <span class="label">Money:</span>
+                    <span id="money">$500</span>
                 </div>
             </div>
             
-            <!-- Center - Game Canvas -->
-            <canvas id="gameCanvas" width="800" height="600"></canvas>
-            
-            <!-- Right Panel - Upgrades and Shop -->
-            <div class="right-panel">
-                <div class="tower-selection">
-                    <h3>Tower Shop</h3>
-                    
-                    <!-- Basic Upgrades -->
-                    <div class="upgrade-categories">
-                        <button id="upgrade-damage" class="upgrade-category" data-category="damage">
-                            <div class="upgrade-button-content">
-                                <div class="upgrade-name">Hellfire</div>
-                                <div class="upgrade-price">$75</div>
-                            </div>
-                        </button>
-                        <button id="upgrade-range" class="upgrade-category" data-category="range">
-                            <div class="upgrade-button-content">
-                                <div class="upgrade-name">Vision</div>
-                                <div class="upgrade-price">$75</div>
-                            </div>
-                        </button>
-                        <button id="upgrade-fireRate" class="upgrade-category" data-category="fireRate">
-                            <div class="upgrade-button-content">
-                                <div class="upgrade-name">Fury</div>
-                                <div class="upgrade-price">$75</div>
-                            </div>
-                        </button>
-                        <button id="upgrade-bulletSpeed" class="upgrade-category" data-category="bulletSpeed">
-                            <div class="upgrade-button-content">
-                                <div class="upgrade-name">Velocity</div>
-                                <div class="upgrade-price">$100</div>
-                            </div>
-                        </button>
-                        <button id="upgrade-multishot" class="upgrade-category" data-category="multishot">
-                            <div class="upgrade-button-content">
-                                <div class="upgrade-name">Binocular</div>
-                                <div class="upgrade-price">$500</div>
-                            </div>
-                        </button>
-                        <button id="upgrade-knockback" class="upgrade-category" data-category="knockback">
-                            <div class="upgrade-button-content">
-                                <div class="upgrade-name">Force</div>
-                                <div class="upgrade-price">$100</div>
-                            </div>
-                        </button>
-                        <button id="upgrade-bulletSize" class="upgrade-category" data-category="bulletSize">
-                            <div class="upgrade-button-content">
-                                <div class="upgrade-name">Magnitude</div>
-                                <div class="upgrade-price">$150</div>
-                            </div>
-                        </button>
-                        <button id="upgrade-pierce" class="upgrade-category" data-category="pierce">
-                            <div class="upgrade-button-content">
-                                <div class="upgrade-name">Pierce</div>
-                                <div class="upgrade-price">$200</div>
-                            </div>
-                        </button>
-                    </div>
+            <div class="controls">
+                <h3>Game Controls</h3>
+                <button id="start-wave">Start Wave</button>
+                <button id="pause-game">Pause</button>
+                <div class="checkbox-container">
+                    <input type="checkbox" id="auto-start" />
+                    <label for="auto-start">Auto Start Rounds</label>
+                </div>
+                
+                <!-- Heal System -->
+                <div class="heal-section">
+                    <button id="heal-base">Heal Base ($50)</button>
                 </div>
             </div>
         </div>
         
-        <!-- Mobile Layout -->
-        <div class="mobile-layout">
-            <!-- Full-screen game canvas -->
-            <canvas id="gameCanvasMobile" width="800" height="600"></canvas>
-            
-            <!-- Mobile Money Display - Top Right Corner -->
-            <div class="mobile-money-display">
-                <span id="mobile-money">$500</span>
-            </div>
-            
-            <!-- Mobile Controls Dropdown - Top Left -->
-            <div class="mobile-controls-dropdown">
-                <button class="mobile-dropdown-toggle" id="mobile-controls-toggle">
-                    <span class="dropdown-icon">☰</span>
-                    <span class="dropdown-label">Controls</span>
-                </button>
-                <div class="mobile-dropdown-content" id="mobile-controls-content">
-                    <button id="mobile-start-wave">Start Wave</button>
-                    <button id="mobile-pause-game">Pause</button>
-                    <button id="mobile-heal-base">Heal Base ($50)</button>
-                    <div class="mobile-checkbox-container">
-                        <input type="checkbox" id="mobile-auto-start" />
-                        <label for="mobile-auto-start">Auto Start</label>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Mobile Upgrades Dropdown - Bottom Left -->
-            <div class="mobile-upgrades-dropdown">
-                <button class="mobile-dropdown-toggle" id="mobile-upgrades-toggle">
-                    <span class="dropdown-icon">⚡</span>
-                    <span class="dropdown-label">Upgrades</span>
-                </button>
-                <div class="mobile-dropdown-content" id="mobile-upgrades-content">
-                    <button id="mobile-upgrade-damage" class="mobile-upgrade-category" data-category="damage">
-                        <span class="upgrade-name">Hellfire</span>
-                        <span class="upgrade-price">$75</span>
+        <!-- Center - Game Canvas -->
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <!-- Right Panel - Upgrades and Shop -->
+        <div class="right-panel">
+            <div class="tower-selection">
+                <h3>Tower Shop</h3>
+                
+                <!-- Basic Upgrades -->
+                <div class="upgrade-categories">
+                    <button id="upgrade-damage" class="upgrade-category" data-category="damage">
+                        <div class="upgrade-button-content">
+                            <div class="upgrade-name">Hellfire</div>
+                            <div class="upgrade-price">$75</div>
+                        </div>
                     </button>
-                    <button id="mobile-upgrade-range" class="mobile-upgrade-category" data-category="range">
-                        <span class="upgrade-name">Vision</span>
-                        <span class="upgrade-price">$75</span>
+                    <button id="upgrade-range" class="upgrade-category" data-category="range">
+                        <div class="upgrade-button-content">
+                            <div class="upgrade-name">Vision</div>
+                            <div class="upgrade-price">$75</div>
+                        </div>
                     </button>
-                    <button id="mobile-upgrade-fireRate" class="mobile-upgrade-category" data-category="fireRate">
-                        <span class="upgrade-name">Fury</span>
-                        <span class="upgrade-price">$75</span>
+                    <button id="upgrade-fireRate" class="upgrade-category" data-category="fireRate">
+                        <div class="upgrade-button-content">
+                            <div class="upgrade-name">Fury</div>
+                            <div class="upgrade-price">$75</div>
+                        </div>
                     </button>
-                    <button id="mobile-upgrade-bulletSpeed" class="mobile-upgrade-category" data-category="bulletSpeed">
-                        <span class="upgrade-name">Velocity</span>
-                        <span class="upgrade-price">$100</span>
+                    <button id="upgrade-bulletSpeed" class="upgrade-category" data-category="bulletSpeed">
+                        <div class="upgrade-button-content">
+                            <div class="upgrade-name">Velocity</div>
+                            <div class="upgrade-price">$100</div>
+                        </div>
                     </button>
-                    <button id="mobile-upgrade-multishot" class="mobile-upgrade-category" data-category="multishot">
-                        <span class="upgrade-name">Binocular</span>
-                        <span class="upgrade-price">$500</span>
+                    <button id="upgrade-multishot" class="upgrade-category" data-category="multishot">
+                        <div class="upgrade-button-content">
+                            <div class="upgrade-name">Binocular</div>
+                            <div class="upgrade-price">$500</div>
+                        </div>
                     </button>
-                    <button id="mobile-upgrade-knockback" class="mobile-upgrade-category" data-category="knockback">
-                        <span class="upgrade-name">Force</span>
-                        <span class="upgrade-price">$100</span>
+                    <button id="upgrade-knockback" class="upgrade-category" data-category="knockback">
+                        <div class="upgrade-button-content">
+                            <div class="upgrade-name">Force</div>
+                            <div class="upgrade-price">$100</div>
+                        </div>
                     </button>
-                    <button id="mobile-upgrade-bulletSize" class="mobile-upgrade-category" data-category="bulletSize">
-                        <span class="upgrade-name">Magnitude</span>
-                        <span class="upgrade-price">$150</span>
+                    <button id="upgrade-bulletSize" class="upgrade-category" data-category="bulletSize">
+                        <div class="upgrade-button-content">
+                            <div class="upgrade-name">Magnitude</div>
+                            <div class="upgrade-price">$150</div>
+                        </div>
                     </button>
-                    <button id="mobile-upgrade-pierce" class="mobile-upgrade-category" data-category="pierce">
-                        <span class="upgrade-name">Pierce</span>
-                        <span class="upgrade-price">$200</span>
+                    <button id="upgrade-pierce" class="upgrade-category" data-category="pierce">
+                        <div class="upgrade-button-content">
+                            <div class="upgrade-name">Pierce</div>
+                            <div class="upgrade-price">$200</div>
+                        </div>
                     </button>
                 </div>
             </div>
