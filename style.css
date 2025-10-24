@@ -10,7 +10,9 @@ body {
     font-family: 'Crimson Text', serif;
     background: #0a0a0a;
     color: #8B0000;
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: auto;
+    min-height: 100vh;
     image-rendering: pixelated;
     image-rendering: -moz-crisp-edges;
     image-rendering: crisp-edges;
@@ -18,10 +20,11 @@ body {
 
 .game-container {
     display: flex;
-    height: 100vh;
+    min-height: 100vh;
     gap: 10px;
     padding: 10px;
     box-sizing: border-box;
+    width: 100%;
 }
 
 .left-panel {
@@ -66,7 +69,8 @@ body {
     overflow-y: auto;
     border: 3px solid #8B0000;
     position: relative;
-    height: calc(100vh - 20px);
+    min-height: calc(100vh - 20px);
+    max-height: calc(100vh - 20px);
 }
 
 .right-panel::before {
@@ -335,6 +339,32 @@ button:active {
     transform: translateY(0);
 }
 
+/* Custom scrollbar styling for main page */
+body::-webkit-scrollbar {
+    width: 12px;
+}
+
+body::-webkit-scrollbar-track {
+    background: #1a0a0a;
+    border-radius: 6px;
+}
+
+body::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #8B0000, #DC143C);
+    border-radius: 6px;
+    border: 2px solid #8B0000;
+}
+
+body::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #DC143C, #FF4500);
+}
+
+/* Firefox scrollbar styling for main page */
+body {
+    scrollbar-width: thin;
+    scrollbar-color: #8B0000 #1a0a0a;
+}
+
 /* Custom scrollbar styling for right panel */
 .right-panel::-webkit-scrollbar {
     width: 8px;
@@ -520,7 +550,6 @@ button:disabled {
 @media (max-width: 1200px) {
     .game-container {
         flex-direction: column;
-        height: auto;
         min-height: 100vh;
     }
     
@@ -530,6 +559,8 @@ button:disabled {
         max-width: 800px;
         flex-direction: row;
         justify-content: space-around;
+        min-height: auto;
+        max-height: none;
     }
     
     .left-panel {
@@ -555,12 +586,70 @@ button:disabled {
     .right-panel {
         padding: 15px;
         flex-direction: column;
+        min-height: auto;
+        max-height: none;
     }
     
     #gameCanvas {
         width: 100%;
         max-width: 800px;
         height: auto;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 600px) {
+    .game-container {
+        padding: 2px;
+        gap: 5px;
+    }
+    
+    .left-panel,
+    .right-panel {
+        padding: 10px;
+        width: 100%;
+    }
+    
+    #gameCanvas {
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        border-width: 2px;
+    }
+    
+    .upgrade-categories {
+        gap: 5px;
+    }
+    
+    .upgrade-category {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+    
+    button {
+        padding: 10px 15px;
+        font-size: 14px;
+    }
+}
+
+/* Landscape orientation on mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+    .game-container {
+        flex-direction: row;
+        min-height: 100vh;
+    }
+    
+    .left-panel,
+    .right-panel {
+        width: auto;
+        min-width: 200px;
+        max-height: calc(100vh - 20px);
+    }
+    
+    #gameCanvas {
+        flex: 1;
+        max-width: none;
+        height: calc(100vh - 20px);
     }
 }
 
