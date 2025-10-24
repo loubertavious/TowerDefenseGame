@@ -44,8 +44,8 @@ class TowerDefenseGame {
         this.particles = [];
         
         // Heal system
-        this.healCost = 50;
         this.healAmount = 50;
+        this.updateHealCost(); // Calculate heal cost based on current wave
         
             // Central base position
         this.base = {
@@ -246,7 +246,7 @@ class TowerDefenseGame {
                         this.devMaxUpgrades();
                         break;
                     case '4':
-                        this.devSkipWave();
+                        this.devSkipLevel();
                         break;
                     case '5':
                         this.devKillAllEnemies();
@@ -261,6 +261,13 @@ class TowerDefenseGame {
         });
     }
     
+    
+    updateHealCost() {
+        // Calculate heal cost as 1/4 of the wave completion bonus
+        const baseBonus = 150;
+        const waveBonus = Math.floor(baseBonus * Math.pow(1.2, this.gameState.wave - 1));
+        this.healCost = Math.max(50, Math.floor(waveBonus / 4)); // Minimum cost of $50
+    }
     
     heal() {
         // Only allow healing between rounds (when no enemies are spawning)
@@ -320,8 +327,32 @@ class TowerDefenseGame {
     devSkipWave() {
         this.gameState.wave++;
         this.gameState.money += 300;
+        this.updateHealCost(); // Update heal cost for new wave
         this.updateUI();
         console.log(`Skipped to wave ${this.gameState.wave}`);
+    }
+    
+    devSkipLevel() {
+        // Calculate the wave completion bonus that would have been earned
+        const baseBonus = 150;
+        const waveBonus = Math.floor(baseBonus * Math.pow(1.2, this.gameState.wave - 1));
+        
+        // Skip to next wave and add the proper bonus money
+        this.gameState.wave++;
+        this.gameState.money += waveBonus;
+        this.updateHealCost(); // Update heal cost for new wave
+        
+        // Clear any existing enemies and reset game state
+        this.enemies = [];
+        this.projectiles = [];
+        this.gameState.gameRunning = false;
+        this.gameState.enemiesLeft = 0;
+        
+        // Re-enable start wave button
+        document.getElementById('start-wave').disabled = false;
+        
+        this.updateUI();
+        console.log(`Skipped to wave ${this.gameState.wave} and added $${waveBonus} bonus money`);
     }
     
     devKillAllEnemies() {
@@ -461,6 +492,15 @@ class TowerDefenseGame {
     }
     
     spawnEnemies() {
+        // Check if this is wave 17+ for cluster spawning
+        if (this.gameState.wave >= 17) {
+            this.spawnEnemiesInClusters();
+        } else {
+            this.spawnEnemiesIndividually();
+        }
+    }
+    
+    spawnEnemiesIndividually() {
         const spawnInterval = setInterval(() => {
             if (this.gameState.enemiesLeft <= 0) {
                 clearInterval(spawnInterval);
@@ -474,6 +514,58 @@ class TowerDefenseGame {
             this.gameState.enemiesLeft--;
             this.updateUI();
         }, 800); // Slightly faster spawning for single-point defense
+    }
+    
+    spawnEnemiesInClusters() {
+        // Cluster spawning parameters for wave 17+
+        const clusterSize = Math.min(8, Math.floor(this.gameState.enemiesLeft / 3) + 2); // 2-8 enemies per cluster
+        const clusterDelay = 1200; // 1.2 seconds between clusters
+        const enemyDelay = 150; // 150ms between enemies within a cluster
+        
+        const spawnCluster = () => {
+            if (this.gameState.enemiesLeft <= 0) {
+                return;
+            }
+            
+            // Determine how many enemies to spawn in this cluster
+            const enemiesInCluster = Math.min(clusterSize, this.gameState.enemiesLeft);
+            
+            // Get a base spawn position for the cluster
+            const baseSpawnPos = this.getRandomSpawnPosition();
+            
+            // Spawn enemies in a tight cluster around the base position
+            for (let i = 0; i < enemiesInCluster; i++) {
+                setTimeout(() => {
+                    if (this.gameState.enemiesLeft <= 0) return;
+                    
+                    // Calculate cluster offset (tight formation)
+                    const clusterRadius = 25; // Tight cluster radius
+                    const angle = (i / enemiesInCluster) * Math.PI * 2; // Distribute in circle
+                    const offsetX = Math.cos(angle) * clusterRadius * (0.3 + Math.random() * 0.7); // Random within cluster
+                    const offsetY = Math.sin(angle) * clusterRadius * (0.3 + Math.random() * 0.7);
+                    
+                    const spawnX = baseSpawnPos.x + offsetX;
+                    const spawnY = baseSpawnPos.y + offsetY;
+                    
+                    // Ensure spawn position is within canvas bounds
+                    const clampedX = Math.max(10, Math.min(this.canvas.width - 10, spawnX));
+                    const clampedY = Math.max(10, Math.min(this.canvas.height - 10, spawnY));
+                    
+                    const enemy = new Enemy(clampedX, clampedY, this.base, this.gameState.wave);
+                    this.enemies.push(enemy);
+                    this.gameState.enemiesLeft--;
+                    this.updateUI();
+                }, i * enemyDelay);
+            }
+            
+            // Schedule next cluster if there are more enemies
+            if (this.gameState.enemiesLeft > 0) {
+                setTimeout(spawnCluster, clusterDelay);
+            }
+        };
+        
+        // Start spawning clusters
+        spawnCluster();
     }
     
     getRandomSpawnPosition() {
@@ -530,13 +622,13 @@ class TowerDefenseGame {
                 healBtn.textContent = 'Health Full';
                 healBtn.title = 'Health is already at maximum';
             } else if (this.gameState.gameRunning) {
-                healBtn.textContent = 'Heal Base ($50)';
+                healBtn.textContent = `Heal Base ($${this.healCost})`;
                 healBtn.title = 'Cannot heal during active combat';
             } else if (this.gameState.money < this.healCost) {
-                healBtn.textContent = 'Heal Base ($50)';
+                healBtn.textContent = `Heal Base ($${this.healCost})`;
                 healBtn.title = `Need $${this.healCost} to heal`;
             } else {
-                healBtn.textContent = 'Heal Base ($50)';
+                healBtn.textContent = `Heal Base ($${this.healCost})`;
                 healBtn.title = `Heal for ${this.healAmount} health`;
             }
         }
@@ -941,7 +1033,7 @@ class TowerDefenseGame {
             '1 - Add $1000',
             '2 - Add $10000', 
             '3 - Max All Upgrades',
-            '4 - Skip Wave',
+            '4 - Skip Level (+Bonus)',
             '5 - Kill All Enemies',
             '6 - Full Heal'
         ];
@@ -1057,6 +1149,7 @@ class TowerDefenseGame {
     waveComplete() {
         this.gameState.gameRunning = false;
         this.gameState.wave++;
+        this.updateHealCost(); // Update heal cost for new wave
         
         // Calculate wave completion bonus with exponential scaling
         const baseBonus = 150;
@@ -2038,43 +2131,63 @@ class Projectile {
     calculateProjectileColor() {
         if (!this.towerData) return '#FF4500'; // Default orange
         
-        // Base color (damage upgrade)
-        let baseColor = '#FF4500'; // Orange for hellfire
-        
-        // Add colors based on upgrades
+        // Start with base orange color
         let colorComponents = {
             r: 255, // Red component
             g: 69,  // Green component  
             b: 0    // Blue component
         };
         
-        // Damage upgrade adds more red intensity
+        // Damage upgrade - intensify red and add slight yellow
         if (this.towerData.damage > 35) {
-            colorComponents.r = Math.min(255, 255 + (this.towerData.damage - 35) * 2);
+            const damageBonus = Math.min(50, (this.towerData.damage - 35) * 0.8);
+            colorComponents.r = Math.min(255, colorComponents.r + damageBonus);
+            colorComponents.g = Math.min(255, colorComponents.g + damageBonus * 0.3);
         }
         
-        // Range upgrade adds blue tint
+        // Range upgrade - add blue tint (cyan effect)
         if (this.towerData.range > 200) {
-            colorComponents.b = Math.min(255, (this.towerData.range - 200) * 3);
+            const rangeBonus = Math.min(80, (this.towerData.range - 200) * 0.4);
+            colorComponents.b = Math.min(255, colorComponents.b + rangeBonus);
+            colorComponents.g = Math.min(255, colorComponents.g + rangeBonus * 0.5);
         }
         
-        // Fire rate upgrade adds yellow tint
+        // Fire rate upgrade - add yellow tint
         if (this.towerData.fireRate < 800) {
-            colorComponents.g = Math.min(255, 69 + (800 - this.towerData.fireRate) * 0.5);
+            const fireRateBonus = Math.min(60, (800 - this.towerData.fireRate) * 0.1);
+            colorComponents.g = Math.min(255, colorComponents.g + fireRateBonus);
         }
         
-        // Bullet speed upgrade adds white intensity
+        // Bullet speed upgrade - add cyan/white tint but preserve color identity
         if (this.towerData.bulletSpeed > 5) {
-            const speedBonus = (this.towerData.bulletSpeed - 5) * 20;
-            colorComponents.r = Math.min(255, colorComponents.r + speedBonus);
-            colorComponents.g = Math.min(255, colorComponents.g + speedBonus);
+            const speedBonus = Math.min(40, (this.towerData.bulletSpeed - 5) * 2);
+            // Add more to blue and green to create cyan rather than pure white
             colorComponents.b = Math.min(255, colorComponents.b + speedBonus);
+            colorComponents.g = Math.min(255, colorComponents.g + speedBonus * 0.7);
+            colorComponents.r = Math.min(255, colorComponents.r + speedBonus * 0.3);
         }
         
-        // Knockback upgrade adds purple tint
+        // Knockback upgrade - add purple tint
         if (this.towerData.knockback > 0) {
-            colorComponents.r = Math.min(255, colorComponents.r + this.towerData.knockback * 10);
-            colorComponents.b = Math.min(255, colorComponents.b + this.towerData.knockback * 15);
+            const knockbackBonus = Math.min(60, this.towerData.knockback * 3);
+            colorComponents.r = Math.min(255, colorComponents.r + knockbackBonus * 0.8);
+            colorComponents.b = Math.min(255, colorComponents.b + knockbackBonus);
+        }
+        
+        // Bullet size upgrade - add golden tint
+        if (this.towerData.bulletSize > 1) {
+            const sizeBonus = Math.min(50, (this.towerData.bulletSize - 1) * 10);
+            colorComponents.r = Math.min(255, colorComponents.r + sizeBonus * 0.8);
+            colorComponents.g = Math.min(255, colorComponents.g + sizeBonus * 0.6);
+            colorComponents.b = Math.min(255, colorComponents.b + sizeBonus * 0.2);
+        }
+        
+        // Pierce upgrade - add silver/white tint but preserve base color
+        if (this.towerData.pierce > 1) {
+            const pierceBonus = Math.min(30, (this.towerData.pierce - 1) * 5);
+            colorComponents.r = Math.min(255, colorComponents.r + pierceBonus * 0.4);
+            colorComponents.g = Math.min(255, colorComponents.g + pierceBonus * 0.4);
+            colorComponents.b = Math.min(255, colorComponents.b + pierceBonus * 0.4);
         }
         
         return `rgb(${Math.floor(colorComponents.r)}, ${Math.floor(colorComponents.g)}, ${Math.floor(colorComponents.b)})`;
@@ -2214,40 +2327,63 @@ class SmallProjectile {
     calculateSmallProjectileColor() {
         if (!this.towerData) return '#FF4500'; // Default orange
         
-        // Similar to main projectile but dimmer for satellite eyes
+        // Start with dimmer base orange color for satellite eyes
         let colorComponents = {
             r: 200, // Red component (dimmer)
             g: 50,  // Green component  
             b: 0    // Blue component
         };
         
-        // Damage upgrade adds more red intensity
+        // Damage upgrade - intensify red and add slight yellow
         if (this.towerData.damage > 35) {
-            colorComponents.r = Math.min(255, 200 + (this.towerData.damage - 35) * 1.5);
+            const damageBonus = Math.min(40, (this.towerData.damage - 35) * 0.6);
+            colorComponents.r = Math.min(255, colorComponents.r + damageBonus);
+            colorComponents.g = Math.min(255, colorComponents.g + damageBonus * 0.3);
         }
         
-        // Range upgrade adds blue tint
+        // Range upgrade - add blue tint (cyan effect)
         if (this.towerData.range > 200) {
-            colorComponents.b = Math.min(255, (this.towerData.range - 200) * 2);
+            const rangeBonus = Math.min(60, (this.towerData.range - 200) * 0.3);
+            colorComponents.b = Math.min(255, colorComponents.b + rangeBonus);
+            colorComponents.g = Math.min(255, colorComponents.g + rangeBonus * 0.5);
         }
         
-        // Fire rate upgrade adds yellow tint
+        // Fire rate upgrade - add yellow tint
         if (this.towerData.fireRate < 800) {
-            colorComponents.g = Math.min(255, 50 + (800 - this.towerData.fireRate) * 0.3);
+            const fireRateBonus = Math.min(45, (800 - this.towerData.fireRate) * 0.08);
+            colorComponents.g = Math.min(255, colorComponents.g + fireRateBonus);
         }
         
-        // Bullet speed upgrade adds white intensity
+        // Bullet speed upgrade - add cyan tint but preserve color identity
         if (this.towerData.bulletSpeed > 5) {
-            const speedBonus = (this.towerData.bulletSpeed - 5) * 15;
-            colorComponents.r = Math.min(255, colorComponents.r + speedBonus);
-            colorComponents.g = Math.min(255, colorComponents.g + speedBonus);
+            const speedBonus = Math.min(30, (this.towerData.bulletSpeed - 5) * 1.5);
+            // Add more to blue and green to create cyan rather than pure white
             colorComponents.b = Math.min(255, colorComponents.b + speedBonus);
+            colorComponents.g = Math.min(255, colorComponents.g + speedBonus * 0.7);
+            colorComponents.r = Math.min(255, colorComponents.r + speedBonus * 0.3);
         }
         
-        // Knockback upgrade adds purple tint
+        // Knockback upgrade - add purple tint
         if (this.towerData.knockback > 0) {
-            colorComponents.r = Math.min(255, colorComponents.r + this.towerData.knockback * 8);
-            colorComponents.b = Math.min(255, colorComponents.b + this.towerData.knockback * 12);
+            const knockbackBonus = Math.min(45, this.towerData.knockback * 2.5);
+            colorComponents.r = Math.min(255, colorComponents.r + knockbackBonus * 0.8);
+            colorComponents.b = Math.min(255, colorComponents.b + knockbackBonus);
+        }
+        
+        // Bullet size upgrade - add golden tint
+        if (this.towerData.bulletSize > 1) {
+            const sizeBonus = Math.min(40, (this.towerData.bulletSize - 1) * 8);
+            colorComponents.r = Math.min(255, colorComponents.r + sizeBonus * 0.8);
+            colorComponents.g = Math.min(255, colorComponents.g + sizeBonus * 0.6);
+            colorComponents.b = Math.min(255, colorComponents.b + sizeBonus * 0.2);
+        }
+        
+        // Pierce upgrade - add silver/white tint but preserve base color
+        if (this.towerData.pierce > 1) {
+            const pierceBonus = Math.min(25, (this.towerData.pierce - 1) * 4);
+            colorComponents.r = Math.min(255, colorComponents.r + pierceBonus * 0.4);
+            colorComponents.g = Math.min(255, colorComponents.g + pierceBonus * 0.4);
+            colorComponents.b = Math.min(255, colorComponents.b + pierceBonus * 0.4);
         }
         
         return `rgb(${Math.floor(colorComponents.r)}, ${Math.floor(colorComponents.g)}, ${Math.floor(colorComponents.b)})`;
